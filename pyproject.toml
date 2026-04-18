@@ -9,7 +9,7 @@ description = "Unified async cookie/session bridge for major AI web apps."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "OpenAI Codex" }]
+authors = [{ name = "tkgo11" }]
 keywords = ["async", "cookies", "chatgpt", "claude", "gemini", "perplexity"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -28,13 +28,16 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "build>=1.2",
   "pytest>=8.0",
   "pytest-asyncio>=0.23",
+  "twine>=5.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/example/LLMCookieBridge"
-Repository = "https://github.com/example/LLMCookieBridge"
+Homepage = "https://github.com/tkgo11/LLMCookieBridge"
+Repository = "https://github.com/tkgo11/LLMCookieBridge"
+Issues = "https://github.com/tkgo11/LLMCookieBridge/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/llm_cookie_bridge"]
@@ -42,4 +45,3 @@ packages = ["src/llm_cookie_bridge"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-
