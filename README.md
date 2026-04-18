@@ -144,3 +144,8 @@ These informed the request shapes and auth bootstraps, but are **not dependencie
 - ChatGPT: `acheong08/ChatGPT`, `lanqian528/chat2api`
 - Claude: `Xerxes-2/clewdr`, `st1vms/unofficial-claude-api`, `KoushikNavuluri/Claude-API`
 - Perplexity: `helallao/perplexity-ai`, `henrique-coder/perplexity-webui-scraper`, `nathanrchn/perplexityai`
+
+## Publishing
+
+This repository is configured for PyPI Trusted Publishing from GitHub Actions using `.github/workflows/publish.yml`.
+Create a GitHub Release after configuring the Trusted Publisher on PyPI to publish a new version automatically.
