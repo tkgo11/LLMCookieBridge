@@ -1,5 +1,13 @@
 # LLMCookieBridge
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg">
+    <img alt="LLMCookieBridge logo" src="assets/logo-light.svg" width="860">
+  </picture>
+</p>
+
 > Unified async Python access to major AI web apps using browser-session cookies instead of official API keys.
 
 `llm-cookie-bridge` is a lightweight Python library that gives you a single async interface for talking to popular AI web apps through the same authenticated browser sessions you already use.
