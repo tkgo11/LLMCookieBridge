@@ -2,6 +2,7 @@ from .base import BaseProvider
 from .chatgpt import ChatGPTProvider
 from .claude import ClaudeProvider
 from .gemini import GeminiProvider
+from .huggingface import HuggingFaceProvider
 from .perplexity import PerplexityProvider
 
 __all__ = [
@@ -9,5 +10,6 @@ __all__ = [
     "ChatGPTProvider",
     "ClaudeProvider",
     "GeminiProvider",
+    "HuggingFaceProvider",
     "PerplexityProvider",
 ]

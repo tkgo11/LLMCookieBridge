@@ -18,6 +18,7 @@ It currently supports:
 - **ChatGPT / OpenAI web**
 - **Claude web**
 - **Perplexity web**
+- **HuggingFace Chat web**
 
 This project is designed for engineers who need a **consistent chat + streaming abstraction** across multiple providers, but need to authenticate with **cookies or session-derived web tokens** rather than first-party API credentials.
 
@@ -35,6 +36,7 @@ This project is designed for engineers who need a **consistent chat + streaming 
   - [ChatGPT / OpenAI web](#chatgpt--openai-web)
   - [Claude](#claude)
   - [Perplexity](#perplexity)
+  - [HuggingFace Chat](#huggingface-chat)
 - [Streaming](#streaming)
 - [Refresh and session recovery](#refresh-and-session-recovery)
 - [API overview](#api-overview)
@@ -265,6 +267,26 @@ bridge = LLMCookieBridge.create(
 
 Perplexity performs a lightweight session-prime step before chat requests.
 
+### HuggingFace Chat
+
+Expected cookie:
+
+- `hf-chat`
+
+Open `https://huggingface.co/chat` in a browser, log in, then copy the `hf-chat` cookie value from DevTools → Application → Cookies.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "huggingface",
+    cookies={"hf-chat": os.environ["HF_CHAT_COOKIE"]},
+)
+```
+
+During refresh the bridge primes the session and discovers the active model list from `/chat/api/v2/models`.
+
 ---
 
 ## Streaming
@@ -296,6 +318,7 @@ Every provider implements a best-effort `refresh()` flow:
 - **ChatGPT**: fetches a bearer token from the web session endpoint
 - **Claude**: discovers the active organization UUID
 - **Perplexity**: re-primes the next-auth session endpoint
+- **HuggingFace Chat**: re-primes the session and refreshes the model list
 
 You can also provide a custom callback to renew cookies when a session expires.
 
@@ -422,6 +445,20 @@ Notes:
 - If no conversation exists, the bridge creates one automatically.
 - Claude rate limit responses may raise `RateLimitError`.
 
+### HuggingFace Chat
+
+| Option | Meaning |
+| --- | --- |
+| `model` | HuggingFace model id, e.g. `"meta-llama/Meta-Llama-3.1-70B-Instruct"` |
+| `system_prompt` | System prompt injected when creating a new conversation |
+| `conversation_id` | Continue an existing conversation |
+| `web_search` | Enable the HuggingFace web-search tool (default `False`) |
+
+Notes:
+
+- If no conversation exists, the bridge creates one automatically via `POST /chat/conversation`.
+- The active model is auto-discovered from `/chat/api/v2/models` on first use.
+
 ### Gemini
 
 Gemini currently exposes a minimal user-facing surface and derives the request envelope internally from the prompt and bootstrapped app state.
@@ -505,6 +542,7 @@ What is currently covered:
 - Claude organization discovery and chat creation
 - Gemini bootstrap token extraction and frame parsing
 - Perplexity SSE answer extraction
+- HuggingFace Chat session bootstrap, conversation creation, and streaming
 - refresh callback behavior
 - security defaults around base URLs and reserved headers
 
@@ -554,6 +592,7 @@ These projects informed request shapes and auth bootstrap understanding, but are
 - ChatGPT: `acheong08/ChatGPT`, `lanqian528/chat2api`
 - Claude: `Xerxes-2/clewdr`, `st1vms/unofficial-claude-api`, `KoushikNavuluri/Claude-API`
 - Perplexity: `helallao/perplexity-ai`, `henrique-coder/perplexity-webui-scraper`, `nathanrchn/perplexityai`
+- HuggingFace Chat: `Soulter/hugging-chat-api`, `SreejanPersonal/Hugging-Chat-Reverse-Engineered-API`
 
 ---
 

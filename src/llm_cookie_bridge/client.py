@@ -4,17 +4,18 @@ from typing import Any, AsyncIterator, Literal
 
 import httpx
 
-from .providers import ChatGPTProvider, ClaudeProvider, GeminiProvider, PerplexityProvider
+from .providers import ChatGPTProvider, ClaudeProvider, GeminiProvider, HuggingFaceProvider, PerplexityProvider
 from .providers.base import BaseProvider
 from .types import ChatChunk, ChatResponse
 
-ProviderName = Literal["gemini", "chatgpt", "claude", "perplexity"]
+ProviderName = Literal["gemini", "chatgpt", "claude", "perplexity", "huggingface"]
 
 _PROVIDERS: dict[str, type[BaseProvider]] = {
     "gemini": GeminiProvider,
     "chatgpt": ChatGPTProvider,
     "claude": ClaudeProvider,
     "perplexity": PerplexityProvider,
+    "huggingface": HuggingFaceProvider,
 }
 
 
