@@ -19,6 +19,14 @@ It currently supports:
 - **Claude web**
 - **Perplexity web**
 - **HuggingFace Chat web**
+- **Grok (xAI) web**
+- **Phind web**
+- **DeepSeek web**
+- **You.com (YouChat) web**
+- **Pi.ai web**
+- **Meta AI web**
+- **Mistral Le Chat web**
+- **Microsoft Copilot web**
 
 This project is designed for engineers who need a **consistent chat + streaming abstraction** across multiple providers, but need to authenticate with **cookies or session-derived web tokens** rather than first-party API credentials.
 
@@ -37,6 +45,14 @@ This project is designed for engineers who need a **consistent chat + streaming 
   - [Claude](#claude)
   - [Perplexity](#perplexity)
   - [HuggingFace Chat](#huggingface-chat)
+  - [Grok](#grok)
+  - [Phind](#phind)
+  - [DeepSeek](#deepseek)
+  - [You.com](#youcom)
+  - [Pi.ai](#piai)
+  - [Meta AI](#meta-ai)
+  - [Mistral Le Chat](#mistral-le-chat)
+  - [Microsoft Copilot](#microsoft-copilot)
 - [Streaming](#streaming)
 - [Refresh and session recovery](#refresh-and-session-recovery)
 - [API overview](#api-overview)
@@ -287,6 +303,151 @@ bridge = LLMCookieBridge.create(
 
 During refresh the bridge primes the session and discovers the active model list from `/chat/api/v2/models`.
 
+### Grok
+
+Expected cookies (from https://grok.com):
+
+- `sso`
+- `sso-rw`
+- `x-anonuserid`
+- `x-challenge`
+- `x-signature`
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "grok",
+    cookies={
+        "sso": os.environ["GROK_SSO"],
+        "sso-rw": os.environ["GROK_SSO_RW"],
+        "x-anonuserid": os.environ["GROK_ANONUSERID"],
+        "x-challenge": os.environ["GROK_CHALLENGE"],
+        "x-signature": os.environ["GROK_SIGNATURE"],
+    },
+)
+```
+
+### Phind
+
+Phind allows anonymous queries without authentication. For full model access, pass the `next-auth.session-token` cookie.
+
+```python
+from llm_cookie_bridge import LLMCookieBridge
+
+# Anonymous (no auth required)
+bridge = LLMCookieBridge.create("phind")
+
+# Authenticated
+bridge = LLMCookieBridge.create(
+    "phind",
+    cookies={"next-auth.session-token": os.environ["PHIND_SESSION_TOKEN"]},
+)
+```
+
+### DeepSeek
+
+Extract the Bearer token from `localStorage` in a logged-in session at https://chat.deepseek.com.
+
+In the browser console run:
+
+```js
+JSON.parse(localStorage.getItem("userToken")).value
+```
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "deepseek",
+    auth_token=os.environ["DEEPSEEK_AUTH_TOKEN"],
+)
+```
+
+### You.com
+
+You.com supports anonymous queries for default models. For access to custom models (GPT-4o, Claude, etc.), log in and export your browser cookies.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+# Anonymous
+bridge = LLMCookieBridge.create("you")
+
+# Authenticated
+bridge = LLMCookieBridge.create(
+    "you",
+    cookie_header=os.environ["YOU_COOKIE_HEADER"],
+)
+```
+
+### Pi.ai
+
+Pi works without authentication for anonymous conversations. Pass cookies for account-linked sessions.
+
+```python
+from llm_cookie_bridge import LLMCookieBridge
+
+# Anonymous
+bridge = LLMCookieBridge.create("pi")
+
+# Authenticated
+bridge = LLMCookieBridge.create(
+    "pi",
+    cookie_header=os.environ["PI_COOKIE_HEADER"],
+)
+```
+
+### Meta AI
+
+Meta AI works without authentication in supported regions. For authenticated sessions, pass your Meta browser cookies.
+
+> **Note**: Meta AI may be geo-blocked in some regions.
+
+```python
+from llm_cookie_bridge import LLMCookieBridge
+
+# Anonymous
+bridge = LLMCookieBridge.create("meta")
+
+# Authenticated
+bridge = LLMCookieBridge.create(
+    "meta",
+    cookie_header=os.environ["META_COOKIE_HEADER"],
+)
+```
+
+### Mistral Le Chat
+
+Log into https://chat.mistral.ai and export your session cookies.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "mistral",
+    cookie_header=os.environ["MISTRAL_COOKIE_HEADER"],
+)
+```
+
+### Microsoft Copilot
+
+Log into https://copilot.microsoft.com and export the full cookie header string (including `_U`, `MUID`, and Microsoft auth cookies).
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "copilot",
+    cookie_header=os.environ["COPILOT_COOKIE_HEADER"],
+)
+```
+
 ---
 
 ## Streaming
@@ -319,6 +480,14 @@ Every provider implements a best-effort `refresh()` flow:
 - **Claude**: discovers the active organization UUID
 - **Perplexity**: re-primes the next-auth session endpoint
 - **HuggingFace Chat**: re-primes the session and refreshes the model list
+- **Grok**: verifies cookie-based session by pinging the root page
+- **Phind**: generates a stable anonymous user ID
+- **DeepSeek**: validates the Bearer auth token is present
+- **You.com**: verifies connectivity to the You.com home page
+- **Pi.ai**: starts a new conversation to prime the session
+- **Meta AI**: fetches the home page to extract LSD/DTSG tokens and (for anonymous sessions) accepts ToS
+- **Mistral Le Chat**: verifies session by loading the home page
+- **Microsoft Copilot**: primes the session by loading the home page
 
 You can also provide a custom callback to renew cookies when a session expires.
 
@@ -475,6 +644,89 @@ Gemini currently exposes a minimal user-facing surface and derives the request e
 | `sources` | Defaults to `["web"]` |
 | `version` | Web request version string |
 | `attachments` | Attachment payload passthrough |
+
+### Grok
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Grok model name, e.g. `"grok-3"`, `"grok-3-mini"`. Defaults to `"grok-3"` |
+| `disable_search` | Disable web search grounding (default `False`) |
+| `is_reasoning` | Enable extended reasoning (default `False`) |
+| `temporary` | Send as a temporary conversation (default `False`) |
+| `conversation_id` | Continue an existing conversation |
+
+### Phind
+
+| Option | Meaning |
+| --- | --- |
+| `model` | One of `"Phind-70B"` (default), `"Claude 3.5 Sonnet"`, `"GPT-4o"`, etc. |
+| `message_history` | List of `{"role": ..., "content": ...}` dicts for multi-turn context |
+| `search` | Enable web search grounding (default `False`) |
+
+### DeepSeek
+
+| Option | Meaning |
+| --- | --- |
+| `model` | `"deepseek_chat"` (default) or `"deepseek_reasoner"` |
+| `thinking_enabled` | Enable extended reasoning / thinking (default `False`) |
+| `search_enabled` | Enable web search grounding (default `False`) |
+| `parent_message_id` | Parent message ID for threading |
+| `conversation_id` | Continue an existing chat session |
+
+Notes:
+
+- A new chat session is created automatically on first use.
+- The bridge tracks `conversation_id` and `message_id` across turns.
+
+### You.com
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Model alias: `"gpt-4o"`, `"claude-3.5-sonnet"`, `"llama-3.3-70b"`, etc. |
+| `chat_mode` | `"default"` \| `"custom"` \| `"create"` \| `"agent"`. Inferred from model when not set |
+| `chat_id` | Re-use a previous chat UUID |
+
+### Pi.ai
+
+| Option | Meaning |
+| --- | --- |
+| `conversation_id` | Continue from a previous Pi conversation SID |
+| `mode` | `"BASE"` (default) or other Pi conversation modes |
+
+Notes:
+
+- A new conversation is created automatically on first use.
+
+### Meta AI
+
+| Option | Meaning |
+| --- | --- |
+| `birthday` | Date of birth for anonymous TOS acceptance (default `"1999-01-01"`) |
+
+Notes:
+
+- For anonymous sessions, the bridge automatically accepts Terms of Service.
+- May not be available in all countries/regions.
+
+### Mistral Le Chat
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Mistral model ID: `"mistral-large-latest"` (default), `"mistral-small-latest"`, `"codestral-latest"` |
+| `conversation_id` | Continue an existing conversation UUID |
+| `system_prompt` | System prompt for new conversations |
+
+Notes:
+
+- A new conversation is created automatically on first use.
+
+### Microsoft Copilot
+
+| Option | Meaning |
+| --- | --- |
+| `conversation_id` | Continue an existing Copilot conversation |
+| `tone` | `"Balanced"` (default), `"Creative"`, `"Precise"` |
+| `locale` | Language locale tag (default `"en-US"`) |
 
 ---
 
