@@ -4,11 +4,39 @@ from typing import Any, AsyncIterator, Literal
 
 import httpx
 
-from .providers import ChatGPTProvider, ClaudeProvider, GeminiProvider, HuggingFaceProvider, PerplexityProvider
+from .providers import (
+    ChatGPTProvider,
+    ClaudeProvider,
+    CopilotProvider,
+    DeepSeekProvider,
+    GeminiProvider,
+    GrokProvider,
+    HuggingFaceProvider,
+    MetaAIProvider,
+    MistralProvider,
+    PerplexityProvider,
+    PhindProvider,
+    PiProvider,
+    YouProvider,
+)
 from .providers.base import BaseProvider
 from .types import ChatChunk, ChatResponse
 
-ProviderName = Literal["gemini", "chatgpt", "claude", "perplexity", "huggingface"]
+ProviderName = Literal[
+    "gemini",
+    "chatgpt",
+    "claude",
+    "perplexity",
+    "huggingface",
+    "grok",
+    "phind",
+    "deepseek",
+    "you",
+    "pi",
+    "meta",
+    "mistral",
+    "copilot",
+]
 
 _PROVIDERS: dict[str, type[BaseProvider]] = {
     "gemini": GeminiProvider,
@@ -16,6 +44,14 @@ _PROVIDERS: dict[str, type[BaseProvider]] = {
     "claude": ClaudeProvider,
     "perplexity": PerplexityProvider,
     "huggingface": HuggingFaceProvider,
+    "grok": GrokProvider,
+    "phind": PhindProvider,
+    "deepseek": DeepSeekProvider,
+    "you": YouProvider,
+    "pi": PiProvider,
+    "meta": MetaAIProvider,
+    "mistral": MistralProvider,
+    "copilot": CopilotProvider,
 }
 
 
