@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llm-cookie-bridge"
-version = "0.1.0"
+version = "0.2.0"
 description = "Unified async cookie/session bridge for major AI web apps."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "tkgo11" }]
-keywords = ["async", "cookies", "chatgpt", "claude", "gemini", "perplexity"]
+keywords = ["async", "cookies", "chatgpt", "claude", "gemini", "perplexity", "grok", "deepseek", "mistral", "copilot"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Framework :: AsyncIO",
