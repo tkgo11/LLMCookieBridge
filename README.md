@@ -72,6 +72,11 @@ This project is designed for engineers who need a **consistent chat + streaming 
   - [Groq](#groq)
   - [Qwen Chat](#qwen-chat)
   - [Tongyi Qianwen](#tongyi-qianwen)
+  - [Together AI](#together-ai)
+  - [Fireworks AI](#fireworks-ai)
+  - [Novita AI](#novita-ai)
+  - [SambaNova Cloud](#sambanova-cloud)
+  - [Cerebras Inference](#cerebras-inference)
 - [Streaming](#streaming)
 - [Refresh and session recovery](#refresh-and-session-recovery)
 - [API overview](#api-overview)
@@ -710,6 +715,164 @@ Provider-specific chat options:
 
 ---
 
+### Together AI
+
+Together AI offers a large catalogue of open-source models (Llama, Mistral, Qwen, DeepSeek, and more) through an OpenAI-compatible REST API.
+
+**Getting your API key:** Sign up or log in at https://api.together.ai → **Settings → API Keys**.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "together",
+    auth_token=os.environ["TOGETHER_API_KEY"],
+)
+
+async with bridge:
+    response = await bridge.chat("Explain the attention mechanism")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `model` | `"meta-llama/Llama-3.3-70B-Instruct-Turbo"` | Model path. See https://api.together.ai/models for the full list. |
+| `system` | `None` | System prompt |
+| `temperature` | `0.7` | Sampling temperature |
+| `max_tokens` | `1024` | Max output tokens |
+| `top_p` | `0.7` | Top-p sampling |
+| `top_k` | `50` | Top-k sampling |
+
+---
+
+### Fireworks AI
+
+Fireworks AI offers fast inference for open-source models (Llama, DeepSeek, Qwen, Mistral, Phi, and more) through an OpenAI-compatible API.
+
+**Getting your API key:** Sign up or log in at https://fireworks.ai → **API Keys**.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "fireworks",
+    auth_token=os.environ["FIREWORKS_API_KEY"],
+)
+
+async with bridge:
+    response = await bridge.chat("Write a Python function to reverse a string")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `model` | `"accounts/fireworks/models/llama-v3p3-70b-instruct"` | Model path. See https://fireworks.ai/models for the full catalogue. |
+| `system` | `None` | System prompt |
+| `temperature` | `0.6` | Sampling temperature |
+| `max_tokens` | `1024` | Max output tokens |
+| `top_p` | `1.0` | Top-p sampling |
+
+---
+
+### Novita AI
+
+Novita AI offers affordable OpenAI-compatible inference for open-source models.
+
+**Getting your API key:** Sign up or log in at https://novita.ai → **API Key** section in your account dashboard.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "novita",
+    auth_token=os.environ["NOVITA_API_KEY"],
+)
+
+async with bridge:
+    response = await bridge.chat("Summarize the transformer architecture")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `model` | `"meta-llama/llama-3.3-70b-instruct"` | Model name |
+| `system` | `None` | System prompt |
+| `temperature` | `0.7` | Sampling temperature |
+| `max_tokens` | `1024` | Max output tokens |
+
+---
+
+### SambaNova Cloud
+
+SambaNova Cloud offers fast inference for frontier open-source models (Llama, DeepSeek, QwQ) on custom RDU hardware. The API is OpenAI-compatible.
+
+**Getting your API key:** Sign up at https://cloud.sambanova.ai → **API Access**.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "sambanova",
+    auth_token=os.environ["SAMBANOVA_API_KEY"],
+)
+
+async with bridge:
+    response = await bridge.chat("Explain wafer-scale computing")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `model` | `"Meta-Llama-3.3-70B-Instruct"` | Model name. Options: `"DeepSeek-R1"`, `"QwQ-32B"`, `"Meta-Llama-3.1-405B-Instruct"` |
+| `system` | `None` | System prompt |
+| `temperature` | `0.1` | Sampling temperature |
+| `max_tokens` | `1024` | Max output tokens |
+
+---
+
+### Cerebras Inference
+
+Cerebras offers ultra-fast token generation on wafer-scale chip clusters. The API is OpenAI-compatible.
+
+**Getting your API key:** Sign up at https://cloud.cerebras.ai → **API Keys** in your dashboard.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "cerebras",
+    auth_token=os.environ["CEREBRAS_API_KEY"],
+)
+
+async with bridge:
+    response = await bridge.chat("What makes wafer-scale inference fast?")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `model` | `"llama3.1-70b"` | Model name. Options: `"llama3.1-8b"`, `"llama-4-scout-17b-16e-instruct"` |
+| `system` | `None` | System prompt |
+| `temperature` | `0.7` | Sampling temperature |
+| `max_tokens` | `1024` | Max output tokens |
+
+---
+
 ## Streaming
 
 All providers are exposed through the same streaming interface:
@@ -748,6 +911,18 @@ Every provider implements a best-effort `refresh()` flow:
 - **Meta AI**: fetches the home page to extract LSD/DTSG tokens and (for anonymous sessions) accepts ToS
 - **Mistral Le Chat**: verifies session by loading the home page
 - **Microsoft Copilot**: primes the session by loading the home page
+- **Poe**: fetches formkey from the Poe home page
+- **Blackbox AI**: attempts to scrape the validated token from the homepage JavaScript
+- **Character.AI**: verifies the bearer token by fetching the authenticated user profile
+- **Cohere**: validates that an auth token is present (API key or session JWT)
+- **Groq**: validates that an API key is present
+- **Qwen Chat**: validates that an auth token is present
+- **Tongyi Qianwen**: verifies cookie-based session by pinging the session list endpoint
+- **Together AI**: validates that an API key is present
+- **Fireworks AI**: validates that an API key is present
+- **Novita AI**: validates that an API key is present
+- **SambaNova Cloud**: validates that an API key is present
+- **Cerebras Inference**: validates that an API key is present
 
 You can also provide a custom callback to renew cookies when a session expires.
 
@@ -1048,6 +1223,54 @@ Notes:
 | --- | --- |
 | `session_id` | Continue an existing conversation session |
 | `parent_msg_id` | Parent message ID for threading |
+
+### Together AI
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Model path (default `"meta-llama/Llama-3.3-70B-Instruct-Turbo"`). See https://api.together.ai/models |
+| `system` | System prompt |
+| `temperature` | Sampling temperature (default `0.7`) |
+| `max_tokens` | Max output tokens (default `1024`) |
+| `top_p` | Top-p sampling (default `0.7`) |
+| `top_k` | Top-k sampling (default `50`) |
+
+### Fireworks AI
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Model path (default `"accounts/fireworks/models/llama-v3p3-70b-instruct"`). See https://fireworks.ai/models |
+| `system` | System prompt |
+| `temperature` | Sampling temperature (default `0.6`) |
+| `max_tokens` | Max output tokens (default `1024`) |
+| `top_p` | Top-p sampling (default `1.0`) |
+
+### Novita AI
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Model name (default `"meta-llama/llama-3.3-70b-instruct"`) |
+| `system` | System prompt |
+| `temperature` | Sampling temperature (default `0.7`) |
+| `max_tokens` | Max output tokens (default `1024`) |
+
+### SambaNova Cloud
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Model name (default `"Meta-Llama-3.3-70B-Instruct"`). Options: `"DeepSeek-R1"`, `"QwQ-32B"`, `"Meta-Llama-3.1-405B-Instruct"` |
+| `system` | System prompt |
+| `temperature` | Sampling temperature (default `0.1`) |
+| `max_tokens` | Max output tokens (default `1024`) |
+
+### Cerebras Inference
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Model name (default `"llama3.1-70b"`). Options: `"llama3.1-8b"`, `"llama-4-scout-17b-16e-instruct"` |
+| `system` | System prompt |
+| `temperature` | Sampling temperature (default `0.7`) |
+| `max_tokens` | Max output tokens (default `1024`) |
 
 ---
 
