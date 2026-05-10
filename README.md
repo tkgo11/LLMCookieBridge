@@ -456,8 +456,6 @@ bridge = LLMCookieBridge.create(
 )
 ```
 
----
-
 ### Poe
 
 Poe aggregates 100+ LLMs (GPT-4o, Claude, Llama, Gemini, Mistral, and more) behind a single interface.
@@ -489,16 +487,6 @@ async with bridge:
     print(response.text)
 ```
 
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `bot` | `"gpt4_o"` | Bot codename, e.g. `"a2"` (Claude-instant), `"claude_3_igloo"` (Claude 3.5 Sonnet), `"Llama-3.1-405B"` |
-| `chat_code` | `None` | Continue an existing chat (from the URL slug) |
-| `chat_id` | `None` | Continue by numeric chat ID |
-
----
-
 ### Blackbox AI
 
 Blackbox AI exposes many models (its own, DeepSeek, Llama, etc.) via a simple POST API.
@@ -529,16 +517,6 @@ async with bridge:
     print(response.text)
 ```
 
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `model` | `"blackboxai"` | Model name. Built-in aliases: `"deepseek-v3"`, `"deepseek-r1"`, `"llama-3.3-70b"`, `"qwen-2.5-72b"`. Pass a raw agent ID for other models. |
-| `chat_id` | auto-generated | Session UUID for multi-turn context |
-| `web_search` | `False` | Enable web search grounding |
-
----
-
 ### Character.AI
 
 Character.AI hosts thousands of AI characters with distinct personalities.
@@ -568,16 +546,6 @@ async with bridge:
     print(response.text)
 ```
 
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `character_id` | required | The character's ID (from the URL or search results) |
-| `chat_id` | auto | Reuse an existing chat UUID for multi-turn context |
-| `greeting` | `True` | Request a greeting message when starting a new chat |
-
----
-
 ### Qwen Chat
 
 Alibaba's Qwen Chat web interface (chat.qwen.ai). Auth token from `localStorage.getItem("token")` in the browser console, or the `Authorization: Bearer` header of any `completions` network request.
@@ -595,17 +563,6 @@ async with bridge:
     response = await bridge.chat("Explain quantum computing", model="qwen-max-latest")
     print(response.text)
 ```
-
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `model` | `"qwen-plus-latest"` | Model name. Options: `"qwen-max-latest"`, `"qwen-turbo-latest"`, `"qwq-32b"` |
-| `web_search` | `False` | Enable web search grounding |
-| `thinking` | `False` | Enable chain-of-thought reasoning |
-| `chat_id` | auto | Session UUID for multi-turn context |
-
----
 
 ### Tongyi Qianwen
 
@@ -626,13 +583,6 @@ async with bridge:
     response = await bridge.chat("你好！请介绍一下自己。")
     print(response.text)
 ```
-
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `session_id` | `""` | Continue an existing conversation |
-| `parent_msg_id` | `""` | Parent message ID for threading |
 
 ---
 
