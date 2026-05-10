@@ -34,6 +34,11 @@ It currently supports:
 - **Groq web** _(Llama, Mixtral, Gemma — OpenAI-compatible, ultra-fast)_
 - **Qwen Chat web** _(chat.qwen.ai — qwen-max, qwen-plus, qwen-turbo)_
 - **Tongyi Qianwen web** _(tongyi.aliyun.com — Alibaba's internal web API)_
+- **Together AI** _(100+ open-source models: Llama, Qwen, DeepSeek, Mistral)_
+- **Fireworks AI** _(fast open-source model inference)_
+- **Novita AI** _(affordable OpenAI-compatible inference)_
+- **SambaNova Cloud** _(wafer-scale hardware, Llama, DeepSeek, QwQ)_
+- **Cerebras Inference** _(ultra-fast wafer-scale token generation)_
 
 This project is designed for engineers who need a **consistent chat + streaming abstraction** across multiple providers, but need to authenticate with **cookies or session-derived web tokens** rather than first-party API credentials.
 
