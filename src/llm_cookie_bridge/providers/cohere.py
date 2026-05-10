@@ -33,7 +33,7 @@ class CohereProvider(BaseProvider):
 
         bridge = LLMCookieBridge.create(
             "cohere",
-            auth_token=os.environ["COHERE_TOKEN"],  # session JWT or API key
+            auth_token=os.environ["COHERE_API_KEY"],  # API key or session JWT
         )
 
     Provider-specific chat options:
