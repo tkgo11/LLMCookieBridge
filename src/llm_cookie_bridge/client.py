@@ -6,28 +6,21 @@ import httpx
 
 from .providers import (
     BlackboxProvider,
-    CerebrasProvider,
     CharacterAIProvider,
     ChatGPTProvider,
     ClaudeProvider,
-    CohereProvider,
     CopilotProvider,
     DeepSeekProvider,
-    FireworksProvider,
     GeminiProvider,
-    GroqProvider,
     GrokProvider,
     HuggingFaceProvider,
     MetaAIProvider,
     MistralProvider,
-    NovitaProvider,
     PerplexityProvider,
     PhindProvider,
     PiProvider,
     PoeProvider,
     QwenProvider,
-    SambanovaProvider,
-    TogetherProvider,
     TongyiProvider,
     YouProvider,
 )
@@ -51,15 +44,8 @@ ProviderName = Literal[
     "poe",
     "blackbox",
     "characterai",
-    "cohere",
-    "groq",
     "qwen",
     "tongyi",
-    "together",
-    "fireworks",
-    "novita",
-    "sambanova",
-    "cerebras",
 ]
 
 _PROVIDERS: dict[str, type[BaseProvider]] = {
@@ -79,15 +65,8 @@ _PROVIDERS: dict[str, type[BaseProvider]] = {
     "poe": PoeProvider,
     "blackbox": BlackboxProvider,
     "characterai": CharacterAIProvider,
-    "cohere": CohereProvider,
-    "groq": GroqProvider,
     "qwen": QwenProvider,
     "tongyi": TongyiProvider,
-    "together": TogetherProvider,
-    "fireworks": FireworksProvider,
-    "novita": NovitaProvider,
-    "sambanova": SambanovaProvider,
-    "cerebras": CerebrasProvider,
 }
 
 
