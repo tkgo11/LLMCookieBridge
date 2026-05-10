@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llm-cookie-bridge"
-version = "0.4.0"
+version = "0.5.0"
 description = "Unified async cookie/session bridge for major AI web apps."
 readme = "README.md"
 requires-python = ">=3.11"
