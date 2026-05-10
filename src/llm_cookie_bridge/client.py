@@ -5,6 +5,8 @@ from typing import Any, AsyncIterator, Literal
 import httpx
 
 from .providers import (
+    BlackboxProvider,
+    CharacterAIProvider,
     ChatGPTProvider,
     ClaudeProvider,
     CopilotProvider,
@@ -17,6 +19,7 @@ from .providers import (
     PerplexityProvider,
     PhindProvider,
     PiProvider,
+    PoeProvider,
     YouProvider,
 )
 from .providers.base import BaseProvider
@@ -36,6 +39,9 @@ ProviderName = Literal[
     "meta",
     "mistral",
     "copilot",
+    "poe",
+    "blackbox",
+    "characterai",
 ]
 
 _PROVIDERS: dict[str, type[BaseProvider]] = {
@@ -52,6 +58,9 @@ _PROVIDERS: dict[str, type[BaseProvider]] = {
     "meta": MetaAIProvider,
     "mistral": MistralProvider,
     "copilot": CopilotProvider,
+    "poe": PoeProvider,
+    "blackbox": BlackboxProvider,
+    "characterai": CharacterAIProvider,
 }
 
 
