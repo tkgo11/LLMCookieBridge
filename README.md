@@ -27,6 +27,9 @@ It currently supports:
 - **Meta AI web**
 - **Mistral Le Chat web**
 - **Microsoft Copilot web**
+- **Poe web** _(access GPT-4o, Claude, Llama, Gemini and 100+ bots)_
+- **Blackbox AI web**
+- **Character.AI web**
 
 This project is designed for engineers who need a **consistent chat + streaming abstraction** across multiple providers, but need to authenticate with **cookies or session-derived web tokens** rather than first-party API credentials.
 
@@ -53,6 +56,9 @@ This project is designed for engineers who need a **consistent chat + streaming 
   - [Meta AI](#meta-ai)
   - [Mistral Le Chat](#mistral-le-chat)
   - [Microsoft Copilot](#microsoft-copilot)
+  - [Poe](#poe)
+  - [Blackbox AI](#blackbox-ai)
+  - [Character.AI](#characterai)
 - [Streaming](#streaming)
 - [Refresh and session recovery](#refresh-and-session-recovery)
 - [API overview](#api-overview)
@@ -450,6 +456,126 @@ bridge = LLMCookieBridge.create(
 
 ---
 
+### Poe
+
+Poe aggregates 100+ LLMs (GPT-4o, Claude, Llama, Gemini, Mistral, and more) behind a single interface.
+
+**Required cookies:** `p-b` and `p-lat`
+
+1. Log into https://poe.com
+2. Open DevTools → Application → Cookies → poe.com
+3. Copy the values of `p-b` and `p-lat`
+4. *(Optional)* For `formkey`: Network tab → any `gql_POST` request → Headers → `Poe-Formkey`
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "poe",
+    cookies={
+        "p-b": os.environ["POE_P_B"],
+        "p-lat": os.environ["POE_P_LAT"],
+    },
+    # Optional – will be auto-fetched if omitted:
+    # formkey=os.environ["POE_FORMKEY"],
+)
+
+# Chat with a specific bot (default is gpt4_o)
+async with bridge:
+    response = await bridge.chat("What is quantum computing?", bot="claude_3_igloo")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `bot` | `"gpt4_o"` | Bot codename, e.g. `"a2"` (Claude-instant), `"claude_3_igloo"` (Claude 3.5 Sonnet), `"Llama-3.1-405B"` |
+| `chat_code` | `None` | Continue an existing chat (from the URL slug) |
+| `chat_id` | `None` | Continue by numeric chat ID |
+
+---
+
+### Blackbox AI
+
+Blackbox AI exposes many models (its own, DeepSeek, Llama, etc.) via a simple POST API.
+
+**Required:** `sessionId` cookie + `validated` token (a UUID in the request body that may rotate).
+
+1. Open https://www.blackbox.ai and start a chat (log in optional for basic models)
+2. Open DevTools → Network → filter by `/api/chat`
+3. From **Request Payload** copy the `validated` UUID
+4. From **Request Headers** copy the `sessionId` cookie value
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "blackbox",
+    cookies={"sessionId": os.environ["BLACKBOX_SESSION_ID"]},
+    validated=os.environ.get("BLACKBOX_VALIDATED", "00f37b34-a166-4efb-bce5-1312d87f2f94"),
+)
+
+async with bridge:
+    # Default Blackbox model
+    response = await bridge.chat("Explain transformers in ML")
+
+    # Use DeepSeek-V3 or other agent models
+    response = await bridge.chat("Write a Python sorting algorithm", model="deepseek-v3")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `model` | `"blackboxai"` | Model name. Built-in aliases: `"deepseek-v3"`, `"deepseek-r1"`, `"llama-3.3-70b"`, `"qwen-2.5-72b"`. Pass a raw agent ID for other models. |
+| `chat_id` | auto-generated | Session UUID for multi-turn context |
+| `web_search` | `False` | Enable web search grounding |
+
+---
+
+### Character.AI
+
+Character.AI hosts thousands of AI characters with distinct personalities.
+
+**Required:** Bearer token from your logged-in session.
+
+1. Log into https://character.ai in your browser
+2. Open DevTools → Network tab
+3. Reload the page or start a chat
+4. Find any request to `plus.character.ai` or `neo.character.ai`
+5. Copy the `Authorization: Token <value>` header value
+
+**Finding a character ID:** The character ID appears in the URL when you open a chat: `https://character.ai/chat/<character_id>`
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "characterai",
+    auth_token=os.environ["CHARACTERAI_TOKEN"],
+    character_id="8_1NyR8w1dOXmI1uWaieQcd595jAxmbNqG5_84HLQkY",  # example
+)
+
+async with bridge:
+    response = await bridge.chat("Tell me a story about dragons")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `character_id` | required | The character's ID (from the URL or search results) |
+| `chat_id` | auto | Reuse an existing chat UUID for multi-turn context |
+| `greeting` | `True` | Request a greeting message when starting a new chat |
+
+---
+
 ## Streaming
 
 All providers are exposed through the same streaming interface:
@@ -727,6 +853,30 @@ Notes:
 | `conversation_id` | Continue an existing Copilot conversation |
 | `tone` | `"Balanced"` (default), `"Creative"`, `"Precise"` |
 | `locale` | Language locale tag (default `"en-US"`) |
+
+### Poe
+
+| Option | Meaning |
+| --- | --- |
+| `bot` | Bot codename (default `"gpt4_o"`). Examples: `"a2"`, `"claude_3_igloo"`, `"Llama-3.1-405B"` |
+| `chat_code` | Chat code from URL to continue an existing thread |
+| `chat_id` | Numeric chat ID to continue an existing thread |
+
+### Blackbox AI
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Model/agent name (default `"blackboxai"`). Aliases: `"deepseek-v3"`, `"deepseek-r1"`, `"llama-3.3-70b"`, `"qwen-2.5-72b"` |
+| `chat_id` | Session UUID for multi-turn context (auto-generated if not provided) |
+| `web_search` | Enable web search grounding (default `False`) |
+
+### Character.AI
+
+| Option | Meaning |
+| --- | --- |
+| `character_id` | **Required.** ID of the character (from chat URL or search) |
+| `chat_id` | Reuse an existing chat UUID |
+| `greeting` | Request a greeting when starting a new chat (default `True`) |
 
 ---
 
