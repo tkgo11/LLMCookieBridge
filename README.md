@@ -30,6 +30,10 @@ It currently supports:
 - **Poe web** _(access GPT-4o, Claude, Llama, Gemini and 100+ bots)_
 - **Blackbox AI web**
 - **Character.AI web**
+- **Cohere Coral web** _(command-r-plus, command-r)_
+- **Groq web** _(Llama, Mixtral, Gemma — OpenAI-compatible, ultra-fast)_
+- **Qwen Chat web** _(chat.qwen.ai — qwen-max, qwen-plus, qwen-turbo)_
+- **Tongyi Qianwen web** _(tongyi.aliyun.com — Alibaba's internal web API)_
 
 This project is designed for engineers who need a **consistent chat + streaming abstraction** across multiple providers, but need to authenticate with **cookies or session-derived web tokens** rather than first-party API credentials.
 
@@ -59,6 +63,10 @@ This project is designed for engineers who need a **consistent chat + streaming 
   - [Poe](#poe)
   - [Blackbox AI](#blackbox-ai)
   - [Character.AI](#characterai)
+  - [Cohere](#cohere)
+  - [Groq](#groq)
+  - [Qwen Chat](#qwen-chat)
+  - [Tongyi Qianwen](#tongyi-qianwen)
 - [Streaming](#streaming)
 - [Refresh and session recovery](#refresh-and-session-recovery)
 - [API overview](#api-overview)
@@ -576,6 +584,127 @@ Provider-specific chat options:
 
 ---
 
+### Cohere
+
+Cohere's Coral web interface uses the same REST API as the official Cohere SDK. You can use either a **Cohere API key** (recommended, free tier available) or a session JWT extracted from the browser.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "cohere",
+    auth_token=os.environ["COHERE_API_KEY"],  # get at dashboard.cohere.com/api-keys
+)
+
+async with bridge:
+    response = await bridge.chat("Explain the transformer architecture")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `model` | `"command-r-plus"` | Model name. Options: `"command-r"`, `"command-a-03-2025"` |
+| `preamble` | `""` | System / instruction prompt |
+| `temperature` | `0.7` | Sampling temperature |
+| `max_tokens` | `4096` | Max output tokens |
+| `web_search` | `False` | Enable Cohere web-search connector |
+| `chat_history` | `[]` | Prior turns as `[{"role": ..., "content": ...}]` |
+
+---
+
+### Groq
+
+Groq runs open-source models (Llama, Mixtral, Gemma) on custom LPU hardware for extremely fast inference. The API is fully OpenAI-compatible.
+
+**Getting your API key:** Go to https://console.groq.com/settings/api-keys (free tier available). Keys start with `gsk_`.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "groq",
+    auth_token=os.environ["GROQ_API_KEY"],
+)
+
+async with bridge:
+    response = await bridge.chat("Write a haiku about AI")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `model` | `"llama-3.3-70b-versatile"` | Model. Options: `"llama-3.1-8b-instant"`, `"mixtral-8x7b-32768"`, `"gemma2-9b-it"` |
+| `system` | `None` | System prompt |
+| `temperature` | `1.0` | Sampling temperature |
+| `max_tokens` | `1024` | Max output tokens |
+| `top_p` | `1.0` | Top-p sampling |
+
+---
+
+### Qwen Chat
+
+Alibaba's Qwen Chat web interface (chat.qwen.ai). Auth token from `localStorage.getItem("token")` in the browser console, or the `Authorization: Bearer` header of any `completions` network request.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "qwen",
+    auth_token=os.environ["QWEN_AUTH_TOKEN"],
+)
+
+async with bridge:
+    response = await bridge.chat("Explain quantum computing", model="qwen-max-latest")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `model` | `"qwen-plus-latest"` | Model name. Options: `"qwen-max-latest"`, `"qwen-turbo-latest"`, `"qwq-32b"` |
+| `web_search` | `False` | Enable web search grounding |
+| `thinking` | `False` | Enable chain-of-thought reasoning |
+| `chat_id` | auto | Session UUID for multi-turn context |
+
+---
+
+### Tongyi Qianwen
+
+The Tongyi Qianwen internal web API (tongyi.aliyun.com) — Alibaba's Chinese AI web app. Requires an Aliyun account.
+
+**Getting your cookie:** Log in at https://tongyi.aliyun.com → DevTools → Application → Cookies → copy `tongyi_sso_ticket`.
+
+```python
+import os
+from llm_cookie_bridge import LLMCookieBridge
+
+bridge = LLMCookieBridge.create(
+    "tongyi",
+    cookies={"tongyi_sso_ticket": os.environ["TONGYI_SSO_TICKET"]},
+)
+
+async with bridge:
+    response = await bridge.chat("你好！请介绍一下自己。")
+    print(response.text)
+```
+
+Provider-specific chat options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `session_id` | `""` | Continue an existing conversation |
+| `parent_msg_id` | `""` | Parent message ID for threading |
+
+---
+
 ## Streaming
 
 All providers are exposed through the same streaming interface:
@@ -877,6 +1006,43 @@ Notes:
 | `character_id` | **Required.** ID of the character (from chat URL or search) |
 | `chat_id` | Reuse an existing chat UUID |
 | `greeting` | Request a greeting when starting a new chat (default `True`) |
+
+### Cohere
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Model name (default `"command-r-plus"`). Options: `"command-r"`, `"command-a-03-2025"` |
+| `preamble` | System/instruction prompt |
+| `temperature` | Sampling temperature (default `0.7`) |
+| `max_tokens` | Max output tokens (default `4096`) |
+| `web_search` | Enable web-search connector (default `False`) |
+| `chat_history` | Prior turn list as `[{"role": ..., "content": ...}]` |
+
+### Groq
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Model name (default `"llama-3.3-70b-versatile"`). Options: `"llama-3.1-8b-instant"`, `"mixtral-8x7b-32768"`, `"gemma2-9b-it"` |
+| `system` | System prompt |
+| `temperature` | Sampling temperature (default `1.0`) |
+| `max_tokens` | Max output tokens (default `1024`) |
+| `top_p` | Top-p sampling (default `1.0`) |
+
+### Qwen Chat
+
+| Option | Meaning |
+| --- | --- |
+| `model` | Model name (default `"qwen-plus-latest"`). Options: `"qwen-max-latest"`, `"qwen-turbo-latest"`, `"qwq-32b"` |
+| `web_search` | Enable web search grounding (default `False`) |
+| `thinking` | Enable chain-of-thought reasoning (default `False`) |
+| `chat_id` | Session UUID for multi-turn context |
+
+### Tongyi Qianwen
+
+| Option | Meaning |
+| --- | --- |
+| `session_id` | Continue an existing conversation session |
+| `parent_msg_id` | Parent message ID for threading |
 
 ---
 

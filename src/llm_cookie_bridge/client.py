@@ -9,9 +9,11 @@ from .providers import (
     CharacterAIProvider,
     ChatGPTProvider,
     ClaudeProvider,
+    CohereProvider,
     CopilotProvider,
     DeepSeekProvider,
     GeminiProvider,
+    GroqProvider,
     GrokProvider,
     HuggingFaceProvider,
     MetaAIProvider,
@@ -20,6 +22,8 @@ from .providers import (
     PhindProvider,
     PiProvider,
     PoeProvider,
+    QwenProvider,
+    TongyiProvider,
     YouProvider,
 )
 from .providers.base import BaseProvider
@@ -42,6 +46,10 @@ ProviderName = Literal[
     "poe",
     "blackbox",
     "characterai",
+    "cohere",
+    "groq",
+    "qwen",
+    "tongyi",
 ]
 
 _PROVIDERS: dict[str, type[BaseProvider]] = {
@@ -61,6 +69,10 @@ _PROVIDERS: dict[str, type[BaseProvider]] = {
     "poe": PoeProvider,
     "blackbox": BlackboxProvider,
     "characterai": CharacterAIProvider,
+    "cohere": CohereProvider,
+    "groq": GroqProvider,
+    "qwen": QwenProvider,
+    "tongyi": TongyiProvider,
 }
 
 
