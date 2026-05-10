@@ -30,15 +30,8 @@ It currently supports:
 - **Poe web** _(access GPT-4o, Claude, Llama, Gemini and 100+ bots)_
 - **Blackbox AI web**
 - **Character.AI web**
-- **Cohere Coral web** _(command-r-plus, command-r)_
-- **Groq web** _(Llama, Mixtral, Gemma — OpenAI-compatible, ultra-fast)_
 - **Qwen Chat web** _(chat.qwen.ai — qwen-max, qwen-plus, qwen-turbo)_
 - **Tongyi Qianwen web** _(tongyi.aliyun.com — Alibaba's internal web API)_
-- **Together AI** _(100+ open-source models: Llama, Qwen, DeepSeek, Mistral)_
-- **Fireworks AI** _(fast open-source model inference)_
-- **Novita AI** _(affordable OpenAI-compatible inference)_
-- **SambaNova Cloud** _(wafer-scale hardware, Llama, DeepSeek, QwQ)_
-- **Cerebras Inference** _(ultra-fast wafer-scale token generation)_
 
 This project is designed for engineers who need a **consistent chat + streaming abstraction** across multiple providers, but need to authenticate with **cookies or session-derived web tokens** rather than first-party API credentials.
 
@@ -68,15 +61,8 @@ This project is designed for engineers who need a **consistent chat + streaming 
   - [Poe](#poe)
   - [Blackbox AI](#blackbox-ai)
   - [Character.AI](#characterai)
-  - [Cohere](#cohere)
-  - [Groq](#groq)
   - [Qwen Chat](#qwen-chat)
   - [Tongyi Qianwen](#tongyi-qianwen)
-  - [Together AI](#together-ai)
-  - [Fireworks AI](#fireworks-ai)
-  - [Novita AI](#novita-ai)
-  - [SambaNova Cloud](#sambanova-cloud)
-  - [Cerebras Inference](#cerebras-inference)
 - [Streaming](#streaming)
 - [Refresh and session recovery](#refresh-and-session-recovery)
 - [API overview](#api-overview)
@@ -161,7 +147,6 @@ import os
 
 from llm_cookie_bridge import LLMCookieBridge
 
-
 async def main() -> None:
     bridge = LLMCookieBridge.create(
         "chatgpt",
@@ -176,7 +161,6 @@ async def main() -> None:
 
         async for chunk in bridge.stream("Write a short poem about HTTP."):
             print(chunk.delta, end="", flush=True)
-
 
 asyncio.run(main())
 ```
@@ -594,69 +578,6 @@ Provider-specific chat options:
 
 ---
 
-### Cohere
-
-Cohere's Coral web interface uses the same REST API as the official Cohere SDK. You can use either a **Cohere API key** (recommended, free tier available) or a session JWT extracted from the browser.
-
-```python
-import os
-from llm_cookie_bridge import LLMCookieBridge
-
-bridge = LLMCookieBridge.create(
-    "cohere",
-    auth_token=os.environ["COHERE_API_KEY"],  # get at dashboard.cohere.com/api-keys
-)
-
-async with bridge:
-    response = await bridge.chat("Explain the transformer architecture")
-    print(response.text)
-```
-
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `model` | `"command-r-plus"` | Model name. Options: `"command-r"`, `"command-a-03-2025"` |
-| `preamble` | `""` | System / instruction prompt |
-| `temperature` | `0.7` | Sampling temperature |
-| `max_tokens` | `4096` | Max output tokens |
-| `web_search` | `False` | Enable Cohere web-search connector |
-| `chat_history` | `[]` | Prior turns as `[{"role": ..., "content": ...}]` |
-
----
-
-### Groq
-
-Groq runs open-source models (Llama, Mixtral, Gemma) on custom LPU hardware for extremely fast inference. The API is fully OpenAI-compatible.
-
-**Getting your API key:** Go to https://console.groq.com/settings/api-keys (free tier available). Keys start with `gsk_`.
-
-```python
-import os
-from llm_cookie_bridge import LLMCookieBridge
-
-bridge = LLMCookieBridge.create(
-    "groq",
-    auth_token=os.environ["GROQ_API_KEY"],
-)
-
-async with bridge:
-    response = await bridge.chat("Write a haiku about AI")
-    print(response.text)
-```
-
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `model` | `"llama-3.3-70b-versatile"` | Model. Options: `"llama-3.1-8b-instant"`, `"mixtral-8x7b-32768"`, `"gemma2-9b-it"` |
-| `system` | `None` | System prompt |
-| `temperature` | `1.0` | Sampling temperature |
-| `max_tokens` | `1024` | Max output tokens |
-| `top_p` | `1.0` | Top-p sampling |
-
----
-
 ### Qwen Chat
 
 Alibaba's Qwen Chat web interface (chat.qwen.ai). Auth token from `localStorage.getItem("token")` in the browser console, or the `Authorization: Bearer` header of any `completions` network request.
@@ -715,164 +636,6 @@ Provider-specific chat options:
 
 ---
 
-### Together AI
-
-Together AI offers a large catalogue of open-source models (Llama, Mistral, Qwen, DeepSeek, and more) through an OpenAI-compatible REST API.
-
-**Getting your API key:** Sign up or log in at https://api.together.ai → **Settings → API Keys**.
-
-```python
-import os
-from llm_cookie_bridge import LLMCookieBridge
-
-bridge = LLMCookieBridge.create(
-    "together",
-    auth_token=os.environ["TOGETHER_API_KEY"],
-)
-
-async with bridge:
-    response = await bridge.chat("Explain the attention mechanism")
-    print(response.text)
-```
-
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `model` | `"meta-llama/Llama-3.3-70B-Instruct-Turbo"` | Model path. See https://api.together.ai/models for the full list. |
-| `system` | `None` | System prompt |
-| `temperature` | `0.7` | Sampling temperature |
-| `max_tokens` | `1024` | Max output tokens |
-| `top_p` | `0.7` | Top-p sampling |
-| `top_k` | `50` | Top-k sampling |
-
----
-
-### Fireworks AI
-
-Fireworks AI offers fast inference for open-source models (Llama, DeepSeek, Qwen, Mistral, Phi, and more) through an OpenAI-compatible API.
-
-**Getting your API key:** Sign up or log in at https://fireworks.ai → **API Keys**.
-
-```python
-import os
-from llm_cookie_bridge import LLMCookieBridge
-
-bridge = LLMCookieBridge.create(
-    "fireworks",
-    auth_token=os.environ["FIREWORKS_API_KEY"],
-)
-
-async with bridge:
-    response = await bridge.chat("Write a Python function to reverse a string")
-    print(response.text)
-```
-
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `model` | `"accounts/fireworks/models/llama-v3p3-70b-instruct"` | Model path. See https://fireworks.ai/models for the full catalogue. |
-| `system` | `None` | System prompt |
-| `temperature` | `0.6` | Sampling temperature |
-| `max_tokens` | `1024` | Max output tokens |
-| `top_p` | `1.0` | Top-p sampling |
-
----
-
-### Novita AI
-
-Novita AI offers affordable OpenAI-compatible inference for open-source models.
-
-**Getting your API key:** Sign up or log in at https://novita.ai → **API Key** section in your account dashboard.
-
-```python
-import os
-from llm_cookie_bridge import LLMCookieBridge
-
-bridge = LLMCookieBridge.create(
-    "novita",
-    auth_token=os.environ["NOVITA_API_KEY"],
-)
-
-async with bridge:
-    response = await bridge.chat("Summarize the transformer architecture")
-    print(response.text)
-```
-
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `model` | `"meta-llama/llama-3.3-70b-instruct"` | Model name |
-| `system` | `None` | System prompt |
-| `temperature` | `0.7` | Sampling temperature |
-| `max_tokens` | `1024` | Max output tokens |
-
----
-
-### SambaNova Cloud
-
-SambaNova Cloud offers fast inference for frontier open-source models (Llama, DeepSeek, QwQ) on custom RDU hardware. The API is OpenAI-compatible.
-
-**Getting your API key:** Sign up at https://cloud.sambanova.ai → **API Access**.
-
-```python
-import os
-from llm_cookie_bridge import LLMCookieBridge
-
-bridge = LLMCookieBridge.create(
-    "sambanova",
-    auth_token=os.environ["SAMBANOVA_API_KEY"],
-)
-
-async with bridge:
-    response = await bridge.chat("Explain wafer-scale computing")
-    print(response.text)
-```
-
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `model` | `"Meta-Llama-3.3-70B-Instruct"` | Model name. Options: `"DeepSeek-R1"`, `"QwQ-32B"`, `"Meta-Llama-3.1-405B-Instruct"` |
-| `system` | `None` | System prompt |
-| `temperature` | `0.1` | Sampling temperature |
-| `max_tokens` | `1024` | Max output tokens |
-
----
-
-### Cerebras Inference
-
-Cerebras offers ultra-fast token generation on wafer-scale chip clusters. The API is OpenAI-compatible.
-
-**Getting your API key:** Sign up at https://cloud.cerebras.ai → **API Keys** in your dashboard.
-
-```python
-import os
-from llm_cookie_bridge import LLMCookieBridge
-
-bridge = LLMCookieBridge.create(
-    "cerebras",
-    auth_token=os.environ["CEREBRAS_API_KEY"],
-)
-
-async with bridge:
-    response = await bridge.chat("What makes wafer-scale inference fast?")
-    print(response.text)
-```
-
-Provider-specific chat options:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `model` | `"llama3.1-70b"` | Model name. Options: `"llama3.1-8b"`, `"llama-4-scout-17b-16e-instruct"` |
-| `system` | `None` | System prompt |
-| `temperature` | `0.7` | Sampling temperature |
-| `max_tokens` | `1024` | Max output tokens |
-
----
-
 ## Streaming
 
 All providers are exposed through the same streaming interface:
@@ -914,15 +677,8 @@ Every provider implements a best-effort `refresh()` flow:
 - **Poe**: fetches formkey from the Poe home page
 - **Blackbox AI**: attempts to scrape the validated token from the homepage JavaScript
 - **Character.AI**: verifies the bearer token by fetching the authenticated user profile
-- **Cohere**: validates that an auth token is present (API key or session JWT)
-- **Groq**: validates that an API key is present
 - **Qwen Chat**: validates that an auth token is present
 - **Tongyi Qianwen**: verifies cookie-based session by pinging the session list endpoint
-- **Together AI**: validates that an API key is present
-- **Fireworks AI**: validates that an API key is present
-- **Novita AI**: validates that an API key is present
-- **SambaNova Cloud**: validates that an API key is present
-- **Cerebras Inference**: validates that an API key is present
 
 You can also provide a custom callback to renew cookies when a session expires.
 
@@ -932,7 +688,6 @@ You can also provide a custom callback to renew cookies when a session expires.
 async def refresh_cookies(provider_name: str):
     assert provider_name == "claude"
     return {"sessionKey": "new-cookie-value"}
-
 
 bridge = LLMCookieBridge.create(
     "claude",
@@ -947,7 +702,6 @@ For more control, return `CookieRefreshResult`:
 
 ```python
 from llm_cookie_bridge import CookieRefreshResult
-
 
 async def refresh_session(provider_name: str) -> CookieRefreshResult:
     return CookieRefreshResult(
@@ -1187,27 +941,6 @@ Notes:
 | `chat_id` | Reuse an existing chat UUID |
 | `greeting` | Request a greeting when starting a new chat (default `True`) |
 
-### Cohere
-
-| Option | Meaning |
-| --- | --- |
-| `model` | Model name (default `"command-r-plus"`). Options: `"command-r"`, `"command-a-03-2025"` |
-| `preamble` | System/instruction prompt |
-| `temperature` | Sampling temperature (default `0.7`) |
-| `max_tokens` | Max output tokens (default `4096`) |
-| `web_search` | Enable web-search connector (default `False`) |
-| `chat_history` | Prior turn list as `[{"role": ..., "content": ...}]` |
-
-### Groq
-
-| Option | Meaning |
-| --- | --- |
-| `model` | Model name (default `"llama-3.3-70b-versatile"`). Options: `"llama-3.1-8b-instant"`, `"mixtral-8x7b-32768"`, `"gemma2-9b-it"` |
-| `system` | System prompt |
-| `temperature` | Sampling temperature (default `1.0`) |
-| `max_tokens` | Max output tokens (default `1024`) |
-| `top_p` | Top-p sampling (default `1.0`) |
-
 ### Qwen Chat
 
 | Option | Meaning |
@@ -1223,56 +956,6 @@ Notes:
 | --- | --- |
 | `session_id` | Continue an existing conversation session |
 | `parent_msg_id` | Parent message ID for threading |
-
-### Together AI
-
-| Option | Meaning |
-| --- | --- |
-| `model` | Model path (default `"meta-llama/Llama-3.3-70B-Instruct-Turbo"`). See https://api.together.ai/models |
-| `system` | System prompt |
-| `temperature` | Sampling temperature (default `0.7`) |
-| `max_tokens` | Max output tokens (default `1024`) |
-| `top_p` | Top-p sampling (default `0.7`) |
-| `top_k` | Top-k sampling (default `50`) |
-
-### Fireworks AI
-
-| Option | Meaning |
-| --- | --- |
-| `model` | Model path (default `"accounts/fireworks/models/llama-v3p3-70b-instruct"`). See https://fireworks.ai/models |
-| `system` | System prompt |
-| `temperature` | Sampling temperature (default `0.6`) |
-| `max_tokens` | Max output tokens (default `1024`) |
-| `top_p` | Top-p sampling (default `1.0`) |
-
-### Novita AI
-
-| Option | Meaning |
-| --- | --- |
-| `model` | Model name (default `"meta-llama/llama-3.3-70b-instruct"`) |
-| `system` | System prompt |
-| `temperature` | Sampling temperature (default `0.7`) |
-| `max_tokens` | Max output tokens (default `1024`) |
-
-### SambaNova Cloud
-
-| Option | Meaning |
-| --- | --- |
-| `model` | Model name (default `"Meta-Llama-3.3-70B-Instruct"`). Options: `"DeepSeek-R1"`, `"QwQ-32B"`, `"Meta-Llama-3.1-405B-Instruct"` |
-| `system` | System prompt |
-| `temperature` | Sampling temperature (default `0.1`) |
-| `max_tokens` | Max output tokens (default `1024`) |
-
-### Cerebras Inference
-
-| Option | Meaning |
-| --- | --- |
-| `model` | Model name (default `"llama3.1-70b"`). Options: `"llama3.1-8b"`, `"llama-4-scout-17b-16e-instruct"` |
-| `system` | System prompt |
-| `temperature` | Sampling temperature (default `0.7`) |
-| `max_tokens` | Max output tokens (default `1024`) |
-
----
 
 ## Error model
 

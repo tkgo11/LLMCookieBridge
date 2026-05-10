@@ -20,15 +20,8 @@ EXPECTED_PROVIDERS = [
     "poe",
     "blackbox",
     "characterai",
-    "cohere",
-    "groq",
     "qwen",
     "tongyi",
-    "together",
-    "fireworks",
-    "novita",
-    "sambanova",
-    "cerebras",
 ]
 
 
@@ -38,7 +31,7 @@ def test_all_providers_registered() -> None:
 
 
 def test_provider_count() -> None:
-    assert len(_PROVIDERS) >= len(EXPECTED_PROVIDERS)
+    assert len(_PROVIDERS) == len(EXPECTED_PROVIDERS)
 
 
 def test_provider_base_urls() -> None:
@@ -59,15 +52,8 @@ def test_provider_base_urls() -> None:
         "poe": "https://poe.com",
         "blackbox": "https://www.blackbox.ai",
         "characterai": "https://neo.character.ai",
-        "cohere": "https://api.cohere.com",
-        "groq": "https://api.groq.com",
         "qwen": "https://chat.qwen.ai",
         "tongyi": "https://qianwen.biz.aliyun.com",
-        "together": "https://api.together.xyz",
-        "fireworks": "https://api.fireworks.ai",
-        "novita": "https://api.novita.ai",
-        "sambanova": "https://api.sambanova.ai",
-        "cerebras": "https://api.cerebras.ai",
     }
     for name, expected_url in expected_urls.items():
         cls = _PROVIDERS[name]
