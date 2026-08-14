@@ -6,7 +6,7 @@ import json
 import httpx
 import pytest
 
-from llm_cookie_bridge import LLMCookieBridge
+from llm_cookie_bridge import AuthenticationError, LLMCookieBridge
 
 
 @pytest.mark.asyncio
@@ -61,15 +61,27 @@ async def test_tongyi_stream_chat() -> None:
 
 @pytest.mark.asyncio
 async def test_tongyi_requires_cookie() -> None:
-    from llm_cookie_bridge.exceptions import AuthenticationError
-
     bridge = LLMCookieBridge.create(
         "tongyi",
         transport=httpx.MockTransport(lambda r: httpx.Response(200, text="ok")),
     )
-    with pytest.raises((AuthenticationError, Exception)):
+    with pytest.raises(AuthenticationError, match="requires 'tongyi_sso_ticket' cookie"):
         async with bridge:
             await bridge.chat("Hello")
+
+
+@pytest.mark.asyncio
+async def test_tongyi_rejects_failed_session_validation() -> None:
+    bridge = LLMCookieBridge.create(
+        "tongyi",
+        cookies={"tongyi_sso_ticket": "expired-ticket"},
+        transport=httpx.MockTransport(lambda request: httpx.Response(401, text="expired")),
+    )
+    async with bridge:
+        with pytest.raises(AuthenticationError, match="session check failed: HTTP 401"):
+            await bridge.refresh()
+
+    assert "primed" not in bridge.provider._auth_state
 
 
 def test_tongyi_instantiation() -> None:

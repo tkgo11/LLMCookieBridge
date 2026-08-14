@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import re
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any, ClassVar
 
 from ..exceptions import AuthenticationError
 from ..types import ChatChunk
@@ -53,42 +53,14 @@ class PoeProvider(BaseProvider):
     default_base_url = "https://poe.com"
 
     _GQL_PATH = "/api/gql_POST"
-    _SETTINGS_PATH = "/api/settings"
     _FORMKEY_SALT = "4LxgHM6KpFqokX0Ox"
 
     DEFAULT_BOT = "gpt4_o"
 
     # Query hashes from the Poe JS bundle.
-    _QUERY_HASHES = {
+    _QUERY_HASHES: ClassVar[dict[str, str]] = {
         "SendMessageMutation": "f1486efc974a214dac6586c46b81bf631a95e58eab1d27b215f622859d74a23e",
         "ChatPageQuery": "e7dcf93e713a35a6b5642496b78339c9ef5ff0ae5e7e0c150ef534a738cced8c",
-        "SubscriptionsMutation": "5a7bfc9ce3b4e456cd05a537cfa27096f08417593b8d9b53f57587f3b7b63e99",
-        "HandleBotLandingPageQuery": "2997adcc7abe30f763da42eed3174b67fd1b60ac4a23dac794526448c2629a8d",
-    }
-
-    _SUBSCRIPTIONS_VARS = {
-        "subscriptions": [
-            {
-                "subscriptionName": "messageAdded",
-                "query": None,
-                "queryHash": "993dcce616ce18788af3cce85e31437abf8fd64b14a3daaf3ae2f0e02d35aa03",
-            },
-            {
-                "subscriptionName": "messageCancelled",
-                "query": None,
-                "queryHash": "14647e90e5960ec81fa83ae53d270462c3743199fbb6c4f26f40f4c83116d2ff",
-            },
-            {
-                "subscriptionName": "chatTitleUpdated",
-                "query": None,
-                "queryHash": "ee062b1f269ecd02ea4c2a3f1e4b2f222f7574c43634a2da4ebeb616d8647e06",
-            },
-            {
-                "subscriptionName": "viewerStateUpdated",
-                "query": None,
-                "queryHash": "3b2014dba11e57e99faa68b6b6c4956f3e982556f0cf832d728534f4319b92c7",
-            },
-        ]
     }
 
     def __init__(
@@ -142,28 +114,20 @@ class PoeProvider(BaseProvider):
             m = re.search(pattern, text)
             if m:
                 return m.group(1)
-        # Fallback: call settings endpoint which also has formkey info
-        resp2 = await self.client.get(self._SETTINGS_PATH)
-        try:
-            data = resp2.json()
-            if "tchannelData" in data:
-                # Settings endpoint doesn't give formkey but confirms auth
-                pass
-        except Exception:
-            pass
         return ""
 
     async def refresh(self, force: bool = False) -> None:
-        if self._auth_state.get("formkey") and not force:
-            return
-        # Check cookies
+        # Both browser-session cookies are required, even when a formkey was
+        # supplied manually.
         cookies = dict(self.client.cookies)
-        if not cookies.get("p-b") and not cookies.get("p-lat"):
+        if not cookies.get("p-b") or not cookies.get("p-lat"):
             raise AuthenticationError(
                 "Poe requires p-b and p-lat cookies. "
                 "Log in at https://poe.com and copy them from DevTools → "
                 "Application → Cookies."
             )
+        if self._auth_state.get("formkey") and not force:
+            return
         # Auto-fetch formkey if not provided
         formkey = await self._fetch_formkey()
         if formkey:
@@ -174,9 +138,6 @@ class PoeProvider(BaseProvider):
                 "Could not auto-retrieve Poe formkey. "
                 "Please provide it manually via the formkey= parameter."
             )
-
-    async def _ensure_subscriptions(self) -> None:
-        await self._gql("SubscriptionsMutation", self._SUBSCRIPTIONS_VARS)
 
     async def stream_chat(self, message: str, **kwargs: Any) -> AsyncIterator[ChatChunk]:
         await self.ensure_authenticated()
