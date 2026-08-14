@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any, ClassVar
 
 from ..exceptions import AuthenticationError
 from ..types import ChatChunk
-from ..utils import compact_json
 from .base import BaseProvider
 
 
@@ -43,7 +43,7 @@ class YouProvider(BaseProvider):
     default_base_url = "https://you.com"
 
     # Model → internal alias mapping
-    MODEL_MAP: dict[str, str] = {
+    MODEL_MAP: ClassVar[dict[str, str]] = {
         "gpt-4o": "gpt_4o",
         "gpt-4o-mini": "gpt_4o_mini",
         "gpt-4-turbo": "gpt_4_turbo",

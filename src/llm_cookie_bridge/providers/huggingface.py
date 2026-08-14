@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from ..exceptions import AuthenticationError
 from ..types import ChatChunk
@@ -64,7 +65,7 @@ class HuggingFaceProvider(BaseProvider):
                 if items:
                     first_model = items[0].get("id")
             self._auth_state["model_id"] = first_model or self.DEFAULT_MODEL
-        except Exception:
+        except (AttributeError, IndexError, TypeError, ValueError):
             self._auth_state["model_id"] = self.DEFAULT_MODEL
 
     async def _create_conversation(self, model_id: str, system_prompt: str = "") -> str:
