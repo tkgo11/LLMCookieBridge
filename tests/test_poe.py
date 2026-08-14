@@ -6,7 +6,7 @@ import json
 import httpx
 import pytest
 
-from llm_cookie_bridge import LLMCookieBridge
+from llm_cookie_bridge import AuthenticationError, LLMCookieBridge
 
 
 @pytest.mark.asyncio
@@ -25,9 +25,6 @@ async def test_poe_bootstrap_and_stream() -> None:
         if request.url.path == "/api/gql_POST":
             body = json.loads(request.content)
             query_name = body.get("queryName", "")
-
-            if query_name == "SubscriptionsMutation":
-                return httpx.Response(200, json={"data": {"subscribe": True}})
 
             if query_name == "SendMessageMutation":
                 return httpx.Response(
@@ -105,8 +102,6 @@ async def test_poe_with_custom_formkey_skips_homepage() -> None:
         if request.url.path == "/api/gql_POST":
             body = json.loads(request.content)
             query_name = body.get("queryName", "")
-            if query_name == "SubscriptionsMutation":
-                return httpx.Response(200, json={"data": {}})
             if query_name == "SendMessageMutation":
                 return httpx.Response(
                     200,
@@ -161,6 +156,28 @@ async def test_poe_with_custom_formkey_skips_homepage() -> None:
 
     assert "/" not in called
     assert response.text == "poe response"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cookies",
+    [{}, {"p-b": "fake-pb"}, {"p-lat": "fake-plat"}],
+)
+async def test_poe_requires_both_session_cookies(cookies: dict[str, str]) -> None:
+    """Missing either required browser-session cookie must fail before I/O."""
+
+    def unexpected_request(request: httpx.Request) -> httpx.Response:
+        raise AssertionError(f"Unexpected network request: {request.url}")
+
+    bridge = LLMCookieBridge.create(
+        "poe",
+        cookies=cookies,
+        formkey="manual-formkey",
+        transport=httpx.MockTransport(unexpected_request),
+    )
+    async with bridge:
+        with pytest.raises(AuthenticationError, match="requires p-b and p-lat cookies"):
+            await bridge.refresh()
 
 
 def test_poe_instantiation() -> None:

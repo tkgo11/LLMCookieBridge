@@ -6,7 +6,7 @@ import json
 import httpx
 import pytest
 
-from llm_cookie_bridge import LLMCookieBridge
+from llm_cookie_bridge import AuthenticationError, LLMCookieBridge
 
 
 @pytest.mark.asyncio
@@ -77,14 +77,12 @@ async def test_characterai_stream_chat() -> None:
 
 @pytest.mark.asyncio
 async def test_characterai_requires_auth_token() -> None:
-    from llm_cookie_bridge.exceptions import AuthenticationError
-
     bridge = LLMCookieBridge.create(
         "characterai",
         transport=httpx.MockTransport(lambda r: httpx.Response(401, text="unauthorized")),
         allow_custom_base_url=True,
     )
-    with pytest.raises((AuthenticationError, Exception)):
+    with pytest.raises(AuthenticationError, match="requires an auth_token"):
         async with bridge:
             await bridge.chat("Hello")
 
