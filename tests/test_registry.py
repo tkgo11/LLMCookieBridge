@@ -1,7 +1,7 @@
 """Provider registry and cross-provider sanity checks."""
 from __future__ import annotations
 
-from llm_cookie_bridge.client import LLMCookieBridge, _PROVIDERS
+from llm_cookie_bridge.client import _PROVIDERS
 
 EXPECTED_PROVIDERS = [
     "gemini",

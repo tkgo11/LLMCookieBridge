@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
+
+import httpx
 
 from ..exceptions import AuthenticationError
 from ..types import ChatChunk
@@ -91,7 +94,7 @@ class CharacterAIProvider(BaseProvider):
             user = data.get("user", {}).get("user", {})
             self._auth_state["user_id"] = user.get("id") or user.get("username", "")
             self._auth_state["name"] = user.get("name", "")
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             self._auth_state["user_id"] = "unknown"
 
     async def _get_or_create_chat(
@@ -111,7 +114,7 @@ class CharacterAIProvider(BaseProvider):
                 chats = data.get("chats") or []
                 if chats:
                     return chats[0]["chat_id"]
-        except Exception:
+        except (httpx.HTTPError, AttributeError, IndexError, KeyError, TypeError, ValueError):
             pass
 
         # Create a new chat via REST (uses POST to neo.character.ai)
@@ -141,7 +144,7 @@ class CharacterAIProvider(BaseProvider):
             data = resp.json()
             chat = data.get("chat") or {}
             return chat.get("chat_id") or new_chat_id
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             return new_chat_id
 
     async def stream_chat(self, message: str, **kwargs: Any) -> AsyncIterator[ChatChunk]:
