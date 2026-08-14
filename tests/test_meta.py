@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 
 import httpx
 import pytest
@@ -26,6 +27,11 @@ async def test_meta_anonymous_tos_and_stream() -> None:
         if request.url.path == "/api/graphql/":
             body = request.content.decode()
             if "useAbraAcceptTOSForTempUserMutation" in body:
+                cookie_header = request.headers.get("cookie", "")
+                assert "_js_datr=js-datr" in cookie_header
+                assert "abra_csrf=csrf-token" in cookie_header
+                assert "datr=datr-token" in cookie_header
+                assert "2000-02-03" in body
                 return httpx.Response(400, text="error")
             if "useAbraSendMessageMutation" in body:
                 line1 = json.dumps(
@@ -61,8 +67,10 @@ async def test_meta_anonymous_tos_and_stream() -> None:
         "meta",
         transport=httpx.MockTransport(handler),
     )
-    async with bridge:
-        response = await bridge.chat("hello")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        async with bridge:
+            response = await bridge.chat("hello", birthday="2000-02-03")
 
     assert "Hello" in response.text
 

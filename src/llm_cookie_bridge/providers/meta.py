@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
+from urllib.parse import quote
 
 from ..exceptions import AuthenticationError
 from ..types import ChatChunk
-from ..utils import compact_json, compute_delta
 from .base import BaseProvider
-
 
 _GRAPH_DOC_ID = "7783822248314888"
 
@@ -50,6 +50,10 @@ class MetaAIProvider(BaseProvider):
     _CSRF_PATTERN = re.compile(r'"abra_csrf":\{"value":"([^"]+)"')
     _DATR_PATTERN = re.compile(r'"datr":\{"value":"([^"]+)"')
     _JS_DATR_PATTERN = re.compile(r'"_js_datr":\{"value":"([^"]+)"')
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._birthday = "1999-01-01"
 
     async def refresh(self, force: bool = False) -> None:
         if self._auth_state.get("ready") and not force:
@@ -94,7 +98,13 @@ class MetaAIProvider(BaseProvider):
 
         # For anonymous sessions, accept TOS to get an access_token.
         if not dict(self.client.cookies).get("c_user"):
-            await self._accept_tos(lsd, csrf, datr, js_datr)
+            await self._accept_tos(
+                lsd,
+                csrf,
+                datr,
+                js_datr,
+                birthday=self._birthday,
+            )
 
     async def _accept_tos(
         self,
@@ -105,27 +115,38 @@ class MetaAIProvider(BaseProvider):
         birthday: str = "1999-01-01",
     ) -> None:
         """Accept Terms of Service for anonymous users and store access_token."""
-        payload = (
-            f"lsd={lsd}"
-            f"&fb_api_caller_class=RelayModern"
-            f"&fb_api_req_friendly_name=useAbraAcceptTOSForTempUserMutation"
-            f"&variables=%7B%22dob%22%3A%22{birthday}%22%2C%22icebreaker_type%22%3A%22TEXT%22%2C%22__relay_internal__pv__WebPixelRatiorelayprovider%22%3A1%7D"
-            f"&doc_id=7604648749596940"
+        self.client.cookies.update(
+            {
+                name: value
+                for name, value in {
+                    "_js_datr": js_datr,
+                    "abra_csrf": csrf,
+                    "datr": datr,
+                }.items()
+                if value
+            }
         )
         response = await self.client.post(
             "/api/graphql/",
-            content=payload.encode(),
+            data={
+                "lsd": lsd,
+                "fb_api_caller_class": "RelayModern",
+                "fb_api_req_friendly_name": "useAbraAcceptTOSForTempUserMutation",
+                "variables": json.dumps(
+                    {
+                        "dob": birthday,
+                        "icebreaker_type": "TEXT",
+                        "__relay_internal__pv__WebPixelRatiorelayprovider": 1,
+                    },
+                    separators=(",", ":"),
+                ),
+                "doc_id": "7604648749596940",
+            },
             headers={
-                "content-type": "application/x-www-form-urlencoded",
                 "x-fb-friendly-name": "useAbraAcceptTOSForTempUserMutation",
                 "x-fb-lsd": lsd,
                 "x-asbd-id": "129477",
                 "alt-used": "www.meta.ai",
-            },
-            cookies={
-                "_js_datr": js_datr,
-                "abra_csrf": csrf,
-                "datr": datr,
             },
         )
         if response.status_code >= 400:
@@ -142,12 +163,13 @@ class MetaAIProvider(BaseProvider):
             pass  # access_token optional; may still work without it
 
     async def stream_chat(self, message: str, **kwargs: Any) -> AsyncIterator[ChatChunk]:
+        if not self._auth_state:
+            self._birthday = kwargs.get("birthday", "1999-01-01")
         await self.ensure_authenticated()
 
         lsd = self._auth_state["lsd"]
         dtsg = self._auth_state["dtsg"]
         access_token = self._auth_state.get("access_token")
-        birthday = kwargs.get("birthday", "1999-01-01")
 
         variables = json.dumps({
             "message": {"sensitive_string_value": message},
@@ -165,30 +187,11 @@ class MetaAIProvider(BaseProvider):
 
         if access_token:
             url = "https://graph.meta.ai/graphql?locale=user"
-            payload = (
-                f"access_token={access_token}"
-                f"&fb_api_caller_class=RelayModern"
-                f"&fb_api_req_friendly_name=useAbraSendMessageMutation"
-                f"&variables={variables}"
-                f"&server_timestamps=true"
-                f"&doc_id={_GRAPH_DOC_ID}"
-            )
             extra_headers: dict[str, str] = {}
         else:
             url = f"{self.base_url}/api/graphql/"
-            payload = (
-                f"lsd={lsd}"
-                f"&fb_dtsg={dtsg}"
-                f"&fb_api_caller_class=RelayModern"
-                f"&fb_api_req_friendly_name=useAbraSendMessageMutation"
-                f"&variables={variables}"
-                f"&server_timestamps=true"
-                f"&doc_id={_GRAPH_DOC_ID}"
-            )
             extra_headers = {"x-fb-lsd": lsd}
 
-        from urllib.parse import quote
-        # Re-encode variables properly
         payload_data = (
             f"variables={quote(variables)}"
             f"&server_timestamps=true"

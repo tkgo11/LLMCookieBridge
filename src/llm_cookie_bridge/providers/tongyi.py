@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
+
+import httpx
 
 from ..exceptions import AuthenticationError
 from ..types import ChatChunk
@@ -69,12 +72,12 @@ class TongyiProvider(BaseProvider):
                 "https://tongyi.aliyun.com",
                 follow_redirects=True,
             )
-            if resp.status_code >= 400:
-                raise AuthenticationError(
-                    f"Tongyi session check failed: HTTP {resp.status_code}"
-                )
-        except Exception:
-            pass
+        except httpx.HTTPError as exc:
+            raise AuthenticationError("Tongyi session check could not be completed") from exc
+        if resp.status_code >= 400:
+            raise AuthenticationError(
+                f"Tongyi session check failed: HTTP {resp.status_code}"
+            )
         self._auth_state["primed"] = True
 
     async def stream_chat(self, message: str, **kwargs: Any) -> AsyncIterator[ChatChunk]:
