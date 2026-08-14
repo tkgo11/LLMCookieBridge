@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, AsyncIterator, Literal
+from collections.abc import AsyncIterator
+from typing import Any, Literal, Self
 
 import httpx
 
@@ -88,7 +89,7 @@ class LLMCookieBridge:
         allow_custom_base_url: bool = False,
         follow_redirects: bool = False,
         **provider_kwargs: Any,
-    ) -> "LLMCookieBridge":
+    ) -> LLMCookieBridge:
         provider_cls = _PROVIDERS[provider]
         instance = provider_cls(
             cookies=cookies,
@@ -116,7 +117,7 @@ class LLMCookieBridge:
     async def aclose(self) -> None:
         await self.provider.close()
 
-    async def __aenter__(self) -> "LLMCookieBridge":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *_: object) -> None:

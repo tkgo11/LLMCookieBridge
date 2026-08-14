@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from ..exceptions import AuthenticationError
 from ..types import ChatChunk
-from ..utils import compact_json, random_uuid
+from ..utils import compact_json
 from .base import BaseProvider
 
 

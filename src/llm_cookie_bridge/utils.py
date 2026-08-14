@@ -108,7 +108,7 @@ def normalize_refresh_result(value: Any) -> CookieRefreshResult:
 
 
 def parse_length_prefixed_json_frames(buffer: str) -> tuple[list[Any], str]:
-    content = buffer[4:] if buffer.startswith(")]}'") else buffer
+    content = buffer.removeprefix(")]}'")
     consumed = 0
     frames: list[Any] = []
     total = len(content)

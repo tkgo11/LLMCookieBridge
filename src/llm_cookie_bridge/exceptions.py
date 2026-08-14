@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 class BridgeError(Exception):
     """Base exception for llm-cookie-bridge."""
 

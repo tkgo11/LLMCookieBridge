@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import AsyncIterator
 
 import httpx
 
@@ -25,7 +25,7 @@ async def iter_sse(response: httpx.Response) -> AsyncIterator[SSEEvent]:
         if line.startswith(":"):
             continue
         field, _, value = line.partition(":")
-        value = value[1:] if value.startswith(" ") else value
+        value = value.removeprefix(" ")
         if field == "event":
             event.event = value
         elif field == "data":

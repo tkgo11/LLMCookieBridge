@@ -1,4 +1,8 @@
-from llm_cookie_bridge.utils import compute_delta, parse_cookie_header, parse_length_prefixed_json_frames
+from llm_cookie_bridge.utils import (
+    compute_delta,
+    parse_cookie_header,
+    parse_length_prefixed_json_frames,
+)
 
 
 def test_parse_cookie_header() -> None:

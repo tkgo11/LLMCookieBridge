@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-import uuid
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from ..exceptions import AuthenticationError
 from ..sse import iter_sse
@@ -92,8 +92,6 @@ class CopilotProvider(BaseProvider):
                     obj = json.loads(event.data)
                 except json.JSONDecodeError:
                     continue
-
-                event_type = obj.get("type") or obj.get("event")
 
                 # Handle delta-style streaming
                 choices = obj.get("choices") or []
