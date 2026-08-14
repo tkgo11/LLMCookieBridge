@@ -3,11 +3,17 @@ from __future__ import annotations
 import json
 import random
 import re
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from ..exceptions import AuthenticationError
 from ..types import ChatChunk
-from ..utils import compact_json, compute_delta, nested_get, parse_length_prefixed_json_frames
+from ..utils import (
+    compact_json,
+    compute_delta,
+    nested_get,
+    parse_length_prefixed_json_frames,
+)
 from .base import BaseProvider
 
 DEFAULT_METADATA = ["", "", "", None, None, None, None, None, None, ""]

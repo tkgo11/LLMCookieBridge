@@ -12,13 +12,11 @@ from llm_cookie_bridge import LLMCookieBridge
 async def test_gemini_bootstrap_and_parse_stream_frames() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/app":
-            html = "\n".join(
-                [
-                    '"SNlM0e": "access-token"',
-                    '"cfb2h": "build-label"',
-                    '"FdrFJe": "session-id"',
-                    '"TuX5cc": "en"',
-                ]
+            html = (
+                '"SNlM0e": "access-token"\n'
+                '"cfb2h": "build-label"\n'
+                '"FdrFJe": "session-id"\n'
+                '"TuX5cc": "en"'
             )
             return httpx.Response(200, text=html)
         if request.url.path.endswith("/StreamGenerate"):

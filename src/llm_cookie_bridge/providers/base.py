@@ -2,15 +2,21 @@ from __future__ import annotations
 
 import asyncio
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Awaitable, Callable
+from typing import Any, Self
 from urllib.parse import urlparse
 
 import httpx
 
 from ..exceptions import AuthenticationError, ProviderResponseError
 from ..types import ChatChunk, ChatResponse
-from ..utils import merge_cookies, maybe_await, normalize_refresh_result, parse_cookie_header
+from ..utils import (
+    maybe_await,
+    merge_cookies,
+    normalize_refresh_result,
+    parse_cookie_header,
+)
 
 RefreshCallback = Callable[[str], Awaitable[dict[str, str] | None] | dict[str, str] | None]
 
@@ -100,7 +106,7 @@ class BaseProvider(ABC):
     async def close(self) -> None:
         await self._client.aclose()
 
-    async def __aenter__(self) -> "BaseProvider":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *_: object) -> None:

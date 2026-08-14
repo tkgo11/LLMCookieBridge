@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import json
 import re
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any, ClassVar
+
+import httpx
 
 from ..exceptions import AuthenticationError
 from ..types import ChatChunk
@@ -53,7 +57,7 @@ class BlackboxProvider(BaseProvider):
     _DEFAULT_VALIDATED = "00f37b34-a166-4efb-bce5-1312d87f2f94"
 
     # Map of friendly model names to Blackbox agentMode ids
-    _AGENT_MODELS: dict[str, dict[str, str]] = {
+    _AGENT_MODELS: ClassVar[dict[str, dict[str, str]]] = {
         "deepseek-v3": {"id": "deepseek-chat", "name": "DeepSeek-V3"},
         "deepseek-r1": {"id": "deepseek-reasoner", "name": "DeepSeek-R1"},
         "llama-3.3-70b": {
@@ -90,8 +94,8 @@ class BlackboxProvider(BaseProvider):
                 m = re.search(pattern, text)
                 if m:
                     return m.group(1)
-        except Exception:
-            pass
+        except httpx.HTTPError:
+            return None
         return None
 
     async def refresh(self, force: bool = False) -> None:
@@ -154,8 +158,7 @@ class BlackboxProvider(BaseProvider):
         # Try to parse as JSON
         text_content = raw_text
         try:
-            import json as _json
-            data = _json.loads(raw_text)
+            data = json.loads(raw_text)
             if isinstance(data, dict):
                 text_content = (
                     data.get("response")
@@ -165,8 +168,8 @@ class BlackboxProvider(BaseProvider):
                 )
             elif isinstance(data, str):
                 text_content = data
-        except Exception:
-            # Plain text response
+        except (AttributeError, IndexError, TypeError, json.JSONDecodeError):
+            # Plain text response or an unexpected JSON response shape.
             text_content = raw_text
 
         if not text_content:
