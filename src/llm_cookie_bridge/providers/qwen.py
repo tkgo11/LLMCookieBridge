@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -11,7 +12,7 @@ from .base import BaseProvider
 
 
 class QwenProvider(BaseProvider):
-    """Alibaba Qwen Chat web provider (chat.qwen.ai).
+    """Alibaba Qwen Chat web provider (chat.qwen.ai, "Qwen Studio").
 
     Authentication: Extract the Bearer token from the browser session at
     ``https://chat.qwen.ai``.
@@ -47,8 +48,8 @@ class QwenProvider(BaseProvider):
     provider_name = "qwen"
     default_base_url = "https://chat.qwen.ai"
 
-    _COMPLETIONS_PATH = "/api/chat/completions"
-    _NEW_CHAT_PATH = "/api/v1/chats/new"
+    _COMPLETIONS_PATH = "/api/v2/chat/completions"
+    _NEW_CHAT_PATH = "/api/v2/chats/new"
 
     DEFAULT_MODEL = "qwen-plus-latest"
 
@@ -91,6 +92,31 @@ class QwenProvider(BaseProvider):
             },
         }
 
+    async def _new_chat(self, model: str) -> str:
+        """Create a chat session and return its chat_id."""
+        payload = {
+            "title": "New Chat",
+            "models": [model],
+            "chat_mode": "normal",
+            "chat_type": "t2t",
+            "timestamp": int(time.time() * 1000),
+        }
+        response = await self.request(
+            "POST",
+            self._NEW_CHAT_PATH,
+            content=compact_json(payload),
+            headers={
+                "content-type": "application/json",
+                "accept": "application/json",
+                "source": "web",
+            },
+        )
+        data = response.json()
+        chat_id = (data.get("data") or {}).get("id") if isinstance(data, dict) else None
+        if not chat_id and isinstance(data, dict):
+            chat_id = data.get("id") or data.get("chat_id")
+        return chat_id or random_uuid()
+
     async def stream_chat(self, message: str, **kwargs: Any) -> AsyncIterator[ChatChunk]:
         await self.ensure_authenticated()
 
@@ -98,6 +124,9 @@ class QwenProvider(BaseProvider):
         web_search = kwargs.get("web_search", False)
         thinking = kwargs.get("thinking", False)
         chat_id = kwargs.get("chat_id") or self._conversation_id
+        if not chat_id:
+            chat_id = await self._new_chat(model)
+            self._conversation_id = chat_id
 
         messages = [self._build_message("user", message, web_search, thinking)]
 
@@ -106,7 +135,8 @@ class QwenProvider(BaseProvider):
             "messages": messages,
             "stream": True,
             "chat_type": "t2t",
-            "id": chat_id or random_uuid(),
+            "chat_mode": "normal",
+            "version": "2.1",
             "incremental_output": True,
         }
 
@@ -114,11 +144,12 @@ class QwenProvider(BaseProvider):
 
         async with self.stream_request(
             "POST",
-            self._COMPLETIONS_PATH,
+            f"{self._COMPLETIONS_PATH}?chat_id={chat_id}",
             content=compact_json(payload),
             headers={
                 "content-type": "application/json",
                 "accept": "text/event-stream",
+                "source": "web",
             },
         ) as response:
             async for line in response.aiter_lines():
@@ -150,7 +181,7 @@ class QwenProvider(BaseProvider):
                             provider=self.provider_name,
                             text=latest_text,
                             delta=token,
-                            conversation_id=payload["id"],
+                            conversation_id=chat_id,
                             raw=data,
                         )
 
@@ -163,5 +194,5 @@ class QwenProvider(BaseProvider):
             text=latest_text,
             delta="",
             done=True,
-            conversation_id=payload["id"],
+            conversation_id=chat_id,
         )

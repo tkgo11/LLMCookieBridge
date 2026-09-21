@@ -23,10 +23,16 @@ async def test_qwen_stream_chat() -> None:
         json.dumps({"choices": [{"delta": {"role": "assistant", "content": " Qwen!"}, "finish_reason": "stop"}]}),
     ]
     body = _sse(*chunks)
+    seen: list[dict] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         assert "Bearer test-qwen-token" in request.headers.get("authorization", "")
         payload = json.loads(request.content)
+        seen.append(payload)
+        if request.url.path == "/api/v2/chats/new":
+            return httpx.Response(200, json={"data": {"id": "chat-1"}})
+        assert request.url.path == "/api/v2/chat/completions"
+        assert "chat_id=chat-1" in str(request.url)
         assert payload["model"] == "qwen-plus-latest"
         assert payload["stream"] is True
         return httpx.Response(200, text=body)
@@ -41,6 +47,8 @@ async def test_qwen_stream_chat() -> None:
 
     assert response.text == "Hello Qwen!"
     assert response.provider == "qwen"
+    assert response.conversation_id == "chat-1"
+    assert seen[0]["models"] == ["qwen-plus-latest"]
 
 
 @pytest.mark.asyncio
@@ -51,6 +59,8 @@ async def test_qwen_custom_model_and_web_search() -> None:
     )
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/v2/chats/new":
+            return httpx.Response(200, json={"data": {"id": "c9"}})
         captured.append(json.loads(request.content))
         return httpx.Response(200, text=body)
 

@@ -6,81 +6,81 @@ import json
 import httpx
 import pytest
 
-from llm_cookie_bridge import LLMCookieBridge
+from llm_cookie_bridge import AuthenticationError, LLMCookieBridge
+
+
+def _sse(*chunks: str, done: bool = True) -> str:
+    parts = [f"data: {c}\n\n" for c in chunks]
+    if done:
+        parts.append("data: [DONE]\n\n")
+    return "".join(parts)
 
 
 @pytest.mark.asyncio
-async def test_blackbox_stream_chat_plain_text() -> None:
+async def test_blackbox_stream_chat() -> None:
+    chunks = [
+        json.dumps({"id": "cmpl-1", "choices": [{"delta": {"content": "The answer"}, "finish_reason": None}]}),
+        json.dumps({"id": "cmpl-1", "choices": [{"delta": {"content": " is 42."}, "finish_reason": "stop"}]}),
+    ]
+
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/":
-            return httpx.Response(200, text="<html>homepage</html>")
-        if request.url.path == "/api/chat":
-            return httpx.Response(200, text="The answer to your question is 42.")
-        return httpx.Response(200, text="ok")
+        assert request.url.path == "/chat/completions"
+        assert "Bearer test-bb-key" in request.headers.get("authorization", "")
+        payload = json.loads(request.content)
+        assert payload["model"] == "blackboxai/openai/gpt-4o"
+        assert payload["stream"] is True
+        return httpx.Response(200, text=_sse(*chunks))
 
     bridge = LLMCookieBridge.create(
         "blackbox",
-        cookies={"sessionId": "fake-session"},
-        validated="00f37b34-a166-4efb-bce5-1312d87f2f94",
+        auth_token="test-bb-key",
         transport=httpx.MockTransport(handler),
     )
     async with bridge:
         response = await bridge.chat("What is the answer?")
 
-    assert response.text == "The answer to your question is 42."
+    assert response.text == "The answer is 42."
     assert response.provider == "blackbox"
 
 
 @pytest.mark.asyncio
-async def test_blackbox_stream_chat_json_response() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/":
-            return httpx.Response(200, text="<html>home</html>")
-        if request.url.path == "/api/chat":
-            return httpx.Response(200, json={"response": "JSON response from Blackbox!"})
-        return httpx.Response(200, text="ok")
-
-    bridge = LLMCookieBridge.create(
-        "blackbox",
-        cookies={"sessionId": "fake"},
-        transport=httpx.MockTransport(handler),
-    )
-    async with bridge:
-        response = await bridge.chat("Hello?")
-
-    assert response.text == "JSON response from Blackbox!"
-
-
-@pytest.mark.asyncio
-async def test_blackbox_with_agent_model() -> None:
-    """Agent model aliases must resolve to the correct agentMode id."""
+async def test_blackbox_custom_model() -> None:
     captured: list[dict] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/":
-            return httpx.Response(200, text="<html/>")
-        if request.url.path == "/api/chat":
-            captured.append(json.loads(request.content))
-            return httpx.Response(200, text="DeepSeek response")
-        return httpx.Response(200, text="ok")
+        captured.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            text=_sse(json.dumps({"choices": [{"delta": {"content": "ok"}, "finish_reason": "stop"}]})),
+        )
 
     bridge = LLMCookieBridge.create(
         "blackbox",
-        cookies={"sessionId": "fake"},
+        auth_token="k",
         transport=httpx.MockTransport(handler),
     )
     async with bridge:
-        response = await bridge.chat("Tell me about AI", model="deepseek-v3")
+        await bridge.chat("Hi", model="blackboxai/deepseek/deepseek-chat")
 
-    assert response.text == "DeepSeek response"
-    assert captured[0]["agentMode"]["id"] == "deepseek-chat"
+    assert captured[0]["model"] == "blackboxai/deepseek/deepseek-chat"
+
+
+@pytest.mark.asyncio
+async def test_blackbox_requires_key() -> None:
+    bridge = LLMCookieBridge.create(
+        "blackbox",
+        transport=httpx.MockTransport(lambda r: httpx.Response(200, text="")),
+    )
+    with pytest.raises(AuthenticationError, match="requires an API key"):
+        async with bridge:
+            await bridge.chat("Hi")
 
 
 def test_blackbox_instantiation() -> None:
     bridge = LLMCookieBridge.create(
         "blackbox",
-        cookies={"sessionId": "fake-session"},
-        transport=httpx.MockTransport(lambda r: httpx.Response(200, text="ok")),
+        auth_token="k",
+        transport=httpx.MockTransport(lambda r: httpx.Response(200, text="")),
     )
     assert bridge.provider.provider_name == "blackbox"
 
@@ -88,4 +88,4 @@ def test_blackbox_instantiation() -> None:
 def test_blackbox_default_model() -> None:
     from llm_cookie_bridge.providers.blackbox import BlackboxProvider
 
-    assert BlackboxProvider.DEFAULT_MODEL == "blackboxai"
+    assert BlackboxProvider.DEFAULT_MODEL == "blackboxai/openai/gpt-4o"

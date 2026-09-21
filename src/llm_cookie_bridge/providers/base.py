@@ -141,7 +141,7 @@ class BaseProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def stream_chat(self, message: str, **kwargs: Any) -> AsyncIterator[ChatChunk]:
+    def stream_chat(self, message: str, **kwargs: Any) -> AsyncIterator[ChatChunk]:
         raise NotImplementedError
 
     async def chat(self, message: str, **kwargs: Any) -> ChatResponse:

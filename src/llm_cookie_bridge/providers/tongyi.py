@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import AsyncIterator
 from typing import Any
-
-import httpx
 
 from ..exceptions import AuthenticationError
 from ..types import ChatChunk
@@ -13,174 +12,174 @@ from .base import BaseProvider
 
 
 class TongyiProvider(BaseProvider):
-    """Alibaba Tongyi Qianwen web provider (tongyi.aliyun.com).
+    """Alibaba Tongyi Qianwen web provider (www.qianwen.com).
 
-    This uses Alibaba's internal Tongyi dialog API — the same endpoint that
-    powers the tongyi.aliyun.com web chat frontend.  It is distinct from the
-    official DashScope / Qwen REST API.
+    Tongyi Qianwen (通义千问) was merged into the unified "Qianwen" web app at
+    ``https://www.qianwen.com`` — the Chinese counterpart of chat.qwen.ai —
+    and shares the same internal API shape.  The old
+    ``qianwen.biz.aliyun.com`` dialog API is no longer reachable.
 
-    Authentication: Extract the ``tongyi_sso_ticket`` cookie from a logged-in
-    browser session at ``https://tongyi.aliyun.com``.
+    Authentication: Extract the Bearer token from a logged-in session at
+    ``https://www.qianwen.com`` (requires an Alibaba account).
 
-    1. Log in at https://tongyi.aliyun.com (requires Aliyun account)
-    2. Open DevTools → Application → Cookies → tongyi.aliyun.com or aliyun.com
-    3. Copy the value of ``tongyi_sso_ticket``
-       (for accounts with login_aliyunid_ticket > 100 chars, use that instead)
+    1. Log in at https://www.qianwen.com
+    2. Browser console: ``localStorage.getItem("token")``
+       — or copy the ``Authorization: Bearer`` header of any ``completions``
+       network request in DevTools.
 
     Example::
 
         bridge = LLMCookieBridge.create(
             "tongyi",
-            cookies={"tongyi_sso_ticket": os.environ["TONGYI_SSO_TICKET"]},
+            auth_token=os.environ["TONGYI_AUTH_TOKEN"],
         )
 
     Provider-specific chat options:
 
-    * ``session_id`` – Continue an existing conversation session.
-    * ``parent_msg_id`` – Parent message ID for threading.
+    * ``model`` – Qianwen model name (defaults to ``"qwen-plus-latest"``).
+    * ``web_search`` – Enable web search grounding (default ``False``).
+    * ``thinking`` – Enable chain-of-thought reasoning (default ``False``).
+    * ``chat_id`` – Continue an existing chat session UUID.
     """
 
     provider_name = "tongyi"
-    default_base_url = "https://qianwen.biz.aliyun.com"
+    default_base_url = "https://www.qianwen.com"
 
-    _CHAT_PATH = "/dialog/conversation"
-    _SESSION_LIST_PATH = "/dialog/session/list"
+    _COMPLETIONS_PATH = "/api/v2/chat/completions"
+    _NEW_CHAT_PATH = "/api/v2/chats/new"
 
-    def __init__(self, **kwargs: Any) -> None:
+    DEFAULT_MODEL = "qwen-plus-latest"
+
+    def __init__(
+        self,
+        *,
+        auth_token: str | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
-        # Set required headers for Tongyi web API
-        self.client.headers["x-platform"] = "pc_tongyi"
-        self.client.headers["x-xsrf-token"] = "48b9ee49-a184-45e2-9f67-fa87213edcdc"
-        self.client.headers["origin"] = "https://tongyi.aliyun.com"
-        self.client.headers["referer"] = "https://tongyi.aliyun.com/"
+        if auth_token:
+            self._auth_state["auth_token"] = auth_token
+            self.client.headers["authorization"] = f"Bearer {auth_token}"
         self.client.headers["content-type"] = "application/json"
-        self.client.headers["accept"] = "text/event-stream"
+        self.client.headers["origin"] = self.base_url
+        self.client.headers["referer"] = f"{self.base_url}/"
 
     async def refresh(self, force: bool = False) -> None:
-        if self._auth_state.get("primed") and not force:
+        if self._auth_state.get("auth_token") and not force:
             return
-        # Verify cookie by hitting the session list endpoint
-        cookies = dict(self.client.cookies)
-        if not cookies.get("tongyi_sso_ticket") and not cookies.get("login_aliyunid_ticket"):
-            raise AuthenticationError(
-                "Tongyi requires 'tongyi_sso_ticket' cookie. "
-                "Log in at https://tongyi.aliyun.com, open DevTools → "
-                "Application → Cookies and copy tongyi_sso_ticket."
-            )
-        try:
-            resp = await self.client.get(
-                "https://tongyi.aliyun.com",
-                follow_redirects=True,
-            )
-        except httpx.HTTPError as exc:
-            raise AuthenticationError("Tongyi session check could not be completed") from exc
-        if resp.status_code >= 400:
-            raise AuthenticationError(
-                f"Tongyi session check failed: HTTP {resp.status_code}"
-            )
-        self._auth_state["primed"] = True
+        raise AuthenticationError(
+            "Tongyi requires an auth_token. "
+            "Log in at https://www.qianwen.com, then copy "
+            "localStorage.getItem('token') or the 'Authorization: Bearer ...' "
+            "header of any 'completions' request in DevTools."
+        )
+
+    async def _new_chat(self, model: str) -> str:
+        """Create a chat session and return its chat_id."""
+        payload = {
+            "title": "New Chat",
+            "models": [model],
+            "chat_mode": "normal",
+            "chat_type": "t2t",
+            "timestamp": int(time.time() * 1000),
+        }
+        response = await self.request(
+            "POST",
+            self._NEW_CHAT_PATH,
+            content=compact_json(payload),
+            headers={
+                "content-type": "application/json",
+                "accept": "application/json",
+                "source": "web",
+            },
+        )
+        data = response.json()
+        chat_id = (data.get("data") or {}).get("id") if isinstance(data, dict) else None
+        if not chat_id and isinstance(data, dict):
+            chat_id = data.get("id") or data.get("chat_id")
+        return chat_id or random_uuid()
 
     async def stream_chat(self, message: str, **kwargs: Any) -> AsyncIterator[ChatChunk]:
         await self.ensure_authenticated()
 
-        session_id = kwargs.get("session_id") or self._conversation_id or ""
-        parent_msg_id = kwargs.get("parent_msg_id") or self._message_id or ""
-        request_id = random_uuid().replace("-", "")
-        batch_id = random_uuid()
+        model = kwargs.get("model", self.DEFAULT_MODEL)
+        web_search = kwargs.get("web_search", False)
+        thinking = kwargs.get("thinking", False)
+        chat_id = kwargs.get("chat_id") or self._conversation_id
+        if not chat_id:
+            chat_id = await self._new_chat(model)
+            self._conversation_id = chat_id
 
         payload: dict[str, Any] = {
-            "mode": "chat",
-            "model": "",
-            "action": "next",
-            "userAction": "chat",
-            "requestId": request_id,
-            "sessionId": session_id,
-            "sessionType": "text_chat",
-            "parentMsgId": parent_msg_id,
-            "params": {
-                "fileUploadBatchId": batch_id,
-            },
-            "contents": [
+            "model": model,
+            "messages": [
                 {
-                    "content": message,
-                    "contentType": "text",
                     "role": "user",
+                    "content": message,
+                    "chat_type": "t2t",
+                    "extra": {},
+                    "feature_config": {
+                        "thinking_enabled": thinking,
+                        "web_search_enabled": web_search,
+                    },
                 }
             ],
+            "stream": True,
+            "chat_type": "t2t",
+            "chat_mode": "normal",
+            "version": "2.1",
+            "incremental_output": True,
         }
 
         latest_text = ""
-        new_session_id = session_id
-        new_msg_id = parent_msg_id
 
         async with self.stream_request(
             "POST",
-            self._CHAT_PATH,
+            f"{self._COMPLETIONS_PATH}?chat_id={chat_id}",
             content=compact_json(payload),
             headers={
                 "content-type": "application/json",
                 "accept": "text/event-stream",
+                "source": "web",
             },
         ) as response:
             async for line in response.aiter_lines():
                 if not line:
                     continue
-                if line.startswith("data:"):
-                    raw = line[5:].strip()
-                    if not raw:
-                        continue
+                if line == "data: [DONE]":
+                    break
+                if line.startswith("data: "):
                     try:
-                        data = json.loads(raw)
+                        data = json.loads(line[6:])
                     except json.JSONDecodeError:
                         continue
 
-                    # Extract metadata
-                    msg_id = data.get("msgId", "")
-                    session = data.get("sessionId", "")
-                    if session:
-                        new_session_id = session
-                    if msg_id:
-                        new_msg_id = msg_id
+                    choices = data.get("choices") or []
+                    if not choices:
+                        continue
 
-                    msg_status = data.get("msgStatus", "")
+                    delta = choices[0].get("delta") or {}
+                    token = delta.get("content") or ""
+                    if delta.get("role") in ("function", "tool") and not token:
+                        continue
 
-                    # Extract text content
-                    contents = data.get("contents") or []
-                    for item in contents:
-                        if item.get("contentType") == "text" and item.get("role") == "assistant":
-                            text = item.get("content") or ""
-                            if text and text != latest_text:
-                                delta = text[len(latest_text):]
-                                latest_text = text
-                                yield ChatChunk(
-                                    provider=self.provider_name,
-                                    text=latest_text,
-                                    delta=delta,
-                                    conversation_id=new_session_id,
-                                    message_id=new_msg_id,
-                                    raw=data,
-                                )
-
-                    if msg_status == "finished":
-                        # Save state for multi-turn
-                        self._conversation_id = new_session_id
-                        self._message_id = new_msg_id
+                    if token:
+                        latest_text += token
                         yield ChatChunk(
                             provider=self.provider_name,
                             text=latest_text,
-                            delta="",
-                            done=True,
-                            conversation_id=new_session_id,
-                            message_id=new_msg_id,
+                            delta=token,
+                            conversation_id=chat_id,
+                            raw=data,
                         )
-                        return
 
-        self._conversation_id = new_session_id
-        self._message_id = new_msg_id
+                    if choices[0].get("finish_reason") in ("stop", "length", "content_filter"):
+                        break
+
         yield ChatChunk(
             provider=self.provider_name,
             text=latest_text,
             delta="",
             done=True,
-            conversation_id=new_session_id,
+            conversation_id=chat_id,
         )

@@ -9,46 +9,31 @@ import pytest
 from llm_cookie_bridge import AuthenticationError, LLMCookieBridge
 
 
+def _sse(*chunks: str, done: bool = True) -> str:
+    parts = [f"data: {c}\n\n" for c in chunks]
+    if done:
+        parts.append("data: [DONE]\n\n")
+    return "".join(parts)
+
+
 @pytest.mark.asyncio
 async def test_tongyi_stream_chat() -> None:
-    session_id = "sess-abc-123"
-    msg_id = "msg-def-456"
+    chunks = [
+        json.dumps({"choices": [{"delta": {"content": "Hello from "}, "finish_reason": None}]}),
+        json.dumps({"choices": [{"delta": {"content": "Tongyi!"}, "finish_reason": "stop"}]}),
+    ]
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if "tongyi.aliyun.com" in str(request.url):
-            return httpx.Response(200, text="<html>ok</html>")
-        frames = [
-            {
-                "sessionId": session_id,
-                "msgId": msg_id,
-                "msgStatus": "ongoing",
-                "contents": [
-                    {
-                        "contentType": "text",
-                        "role": "assistant",
-                        "content": "Hello from Tongyi!",
-                    }
-                ],
-            },
-            {
-                "sessionId": session_id,
-                "msgId": msg_id,
-                "msgStatus": "finished",
-                "contents": [
-                    {
-                        "contentType": "text",
-                        "role": "assistant",
-                        "content": "Hello from Tongyi!",
-                    }
-                ],
-            },
-        ]
-        body = "\n".join(f"data: {json.dumps(f)}" for f in frames)
-        return httpx.Response(200, text=body)
+        assert "Bearer ty-tok" in request.headers.get("authorization", "")
+        if request.url.path == "/api/v2/chats/new":
+            return httpx.Response(200, json={"data": {"id": "ty-chat-1"}})
+        assert request.url.path == "/api/v2/chat/completions"
+        assert "chat_id=ty-chat-1" in str(request.url)
+        return httpx.Response(200, text=_sse(*chunks))
 
     bridge = LLMCookieBridge.create(
         "tongyi",
-        cookies={"tongyi_sso_ticket": "fake-ticket"},
+        auth_token="ty-tok",
         transport=httpx.MockTransport(handler),
     )
     async with bridge:
@@ -56,38 +41,24 @@ async def test_tongyi_stream_chat() -> None:
 
     assert response.text == "Hello from Tongyi!"
     assert response.provider == "tongyi"
-    assert response.conversation_id == session_id
+    assert response.conversation_id == "ty-chat-1"
 
 
 @pytest.mark.asyncio
-async def test_tongyi_requires_cookie() -> None:
+async def test_tongyi_requires_token() -> None:
     bridge = LLMCookieBridge.create(
         "tongyi",
         transport=httpx.MockTransport(lambda r: httpx.Response(200, text="ok")),
     )
-    with pytest.raises(AuthenticationError, match="requires 'tongyi_sso_ticket' cookie"):
+    with pytest.raises(AuthenticationError, match="requires an auth_token"):
         async with bridge:
             await bridge.chat("Hello")
-
-
-@pytest.mark.asyncio
-async def test_tongyi_rejects_failed_session_validation() -> None:
-    bridge = LLMCookieBridge.create(
-        "tongyi",
-        cookies={"tongyi_sso_ticket": "expired-ticket"},
-        transport=httpx.MockTransport(lambda request: httpx.Response(401, text="expired")),
-    )
-    async with bridge:
-        with pytest.raises(AuthenticationError, match="session check failed: HTTP 401"):
-            await bridge.refresh()
-
-    assert "primed" not in bridge.provider._auth_state
 
 
 def test_tongyi_instantiation() -> None:
     bridge = LLMCookieBridge.create(
         "tongyi",
-        cookies={"tongyi_sso_ticket": "fake-ticket"},
+        auth_token="ty-tok",
         transport=httpx.MockTransport(lambda r: httpx.Response(200, text="")),
     )
     assert bridge.provider.provider_name == "tongyi"

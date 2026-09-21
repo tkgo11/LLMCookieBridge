@@ -47,7 +47,7 @@ class GeminiProvider(BaseProvider):
         self._auth_state.update(extracted)
 
     def _build_inner_request(self, prompt: str) -> list[Any]:
-        inner = [None] * 69
+        inner: list[Any] = [None] * 69
         inner[0] = [prompt, 0, None, None, None, None, 0]
         inner[1] = [self._auth_state.get("language", "en")]
         inner[2] = DEFAULT_METADATA

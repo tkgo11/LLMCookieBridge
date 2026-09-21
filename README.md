@@ -12,26 +12,31 @@
 
 `llm-cookie-bridge` is a lightweight Python library that gives you a single async interface for talking to popular AI web apps through the same authenticated browser sessions you already use.
 
-It currently supports:
+It currently supports **61 providers**, grouped by category:
 
-- **Google Gemini web**
-- **ChatGPT / OpenAI web**
-- **Claude web**
-- **Perplexity web**
-- **HuggingFace Chat web**
-- **Grok (xAI) web**
-- **Phind web**
-- **DeepSeek web**
-- **You.com (YouChat) web**
-- **Pi.ai web**
-- **Meta AI web**
-- **Mistral Le Chat web**
-- **Microsoft Copilot web**
-- **Poe web** _(access GPT-4o, Claude, Llama, Gemini and 100+ bots)_
-- **Blackbox AI web**
-- **Character.AI web**
-- **Qwen Chat web** _(chat.qwen.ai — qwen-max, qwen-plus, qwen-turbo)_
-- **Tongyi Qianwen web** _(tongyi.aliyun.com — Alibaba's internal web API)_
+**Major AI web apps**
+
+- **Google Gemini web** · **ChatGPT / OpenAI web** · **Claude web** · **Perplexity web** · **HuggingFace Chat web** · **Grok (xAI) web** · **DeepSeek web** · **You.com (YouChat) web** · **Pi.ai web** · **Meta AI web** · **Mistral Le Chat web** · **Microsoft Copilot web** · **Character.AI web** · **Google AI Studio** · **NotebookLM** · **DuckDuckGo AI Chat** · **Proton Lumo** · **Kagi Assistant**
+
+**Aggregators & multi-model platforms**
+
+- **Poe** _(GPT-4o, Claude, Llama, Gemini and 100+ bots)_ · **OpenRouter** · **Blackbox AI** _(OpenAI-compatible API)_ · **LM Arena** · **Monica** · **Sider** · **Merlin** · **PopAI** · **Genspark** · **Skywork** · **Wrtn** · **Abacus ChatLLM** · **Coze** · **Z.ai (GLM)**
+
+**Chinese providers**
+
+- **Qwen Chat** _(chat.qwen.ai)_ · **Tongyi Qianwen** _(now www.qianwen.com)_ · **Kimi (Moonshot)** · **Doubao (ByteDance)** · **Yuanbao (Tencent)** · **ChatGLM (Zhipu)** · **SparkDesk (iFlytek)** · **Hailuo (MiniMax)** · **SenseChat (SenseTime)** · **Baichuan** · **360 Zhinao**
+
+**Search & research assistants**
+
+- **Phind** · **iAsk** · **Scira** · **Komo** · **Andi** · **Felo** · **Devv**
+
+**Developer & builder tools**
+
+- **GitHub Models** · **Sourcegraph Cody** · **v0 (Vercel)** · **Bolt.new** · **Lovable** · **Websim** · **DeepAI**
+
+**OpenAI-compatible APIs**
+
+- **Groq** · **Together AI** · **Cohere** · **Venice AI**
 
 This project is designed for engineers who need a **consistent chat + streaming abstraction** across multiple providers, but need to authenticate with **cookies or session-derived web tokens** rather than first-party API credentials.
 
@@ -63,6 +68,7 @@ This project is designed for engineers who need a **consistent chat + streaming 
   - [Character.AI](#characterai)
   - [Qwen Chat](#qwen-chat)
   - [Tongyi Qianwen](#tongyi-qianwen)
+  - [Additional providers](#additional-providers)
 - [Streaming](#streaming)
 - [Refresh and session recovery](#refresh-and-session-recovery)
 - [API overview](#api-overview)
@@ -489,14 +495,9 @@ async with bridge:
 
 ### Blackbox AI
 
-Blackbox AI exposes many models (its own, DeepSeek, Llama, etc.) via a simple POST API.
+Blackbox pivoted from a cookie-based web chat to an **OpenAI-compatible inference API** at `api.blackbox.ai/chat/completions`.
 
-**Required:** `sessionId` cookie + `validated` token (a UUID in the request body that may rotate).
-
-1. Open https://www.blackbox.ai and start a chat (log in optional for basic models)
-2. Open DevTools → Network → filter by `/api/chat`
-3. From **Request Payload** copy the `validated` UUID
-4. From **Request Headers** copy the `sessionId` cookie value
+**Required:** an API key — sign in at https://www.blackbox.ai and create one from the dashboard.
 
 ```python
 import os
@@ -504,16 +505,17 @@ from llm_cookie_bridge import LLMCookieBridge
 
 bridge = LLMCookieBridge.create(
     "blackbox",
-    cookies={"sessionId": os.environ["BLACKBOX_SESSION_ID"]},
-    validated=os.environ.get("BLACKBOX_VALIDATED", "00f37b34-a166-4efb-bce5-1312d87f2f94"),
+    auth_token=os.environ["BLACKBOX_API_KEY"],
 )
 
 async with bridge:
-    # Default Blackbox model
     response = await bridge.chat("Explain transformers in ML")
 
-    # Use DeepSeek-V3 or other agent models
-    response = await bridge.chat("Write a Python sorting algorithm", model="deepseek-v3")
+    # Any model on the platform, e.g.
+    response = await bridge.chat(
+        "Write a Python sorting algorithm",
+        model="blackboxai/deepseek/deepseek-chat",
+    )
     print(response.text)
 ```
 
@@ -566,9 +568,9 @@ async with bridge:
 
 ### Tongyi Qianwen
 
-The Tongyi Qianwen internal web API (tongyi.aliyun.com) — Alibaba's Chinese AI web app. Requires an Aliyun account.
+Tongyi Qianwen (通义千问) was merged into the unified **Qianwen** web app at https://www.qianwen.com — the Chinese counterpart of chat.qwen.ai — sharing the same internal v2 API. The old `qianwen.biz.aliyun.com` API is gone. Requires an Alibaba account.
 
-**Getting your cookie:** Log in at https://tongyi.aliyun.com → DevTools → Application → Cookies → copy `tongyi_sso_ticket`.
+**Getting your token:** Log in at https://www.qianwen.com → browser console → `localStorage.getItem("token")`, or copy the `Authorization: Bearer` header of any `completions` request in DevTools.
 
 ```python
 import os
@@ -576,13 +578,65 @@ from llm_cookie_bridge import LLMCookieBridge
 
 bridge = LLMCookieBridge.create(
     "tongyi",
-    cookies={"tongyi_sso_ticket": os.environ["TONGYI_SSO_TICKET"]},
+    auth_token=os.environ["TONGYI_AUTH_TOKEN"],
 )
 
 async with bridge:
     response = await bridge.chat("你好！请介绍一下自己。")
     print(response.text)
 ```
+
+### Additional providers
+
+The remaining providers follow the same `LLMCookieBridge.create(name, ...)` pattern.
+Auth material is one of: `auth_token` (Bearer/API key), `cookie_header`/`cookies`
+(browser session), or none (anonymous).
+
+| `create()` name | Site | Auth | Notes |
+| --- | --- | --- | --- |
+| `duckai` | duckduckgo.com | none | Anonymous; fetches `x-vqd-4` token automatically |
+| `zai` | chat.z.ai | `auth_token` or none | Falls back to guest token when unauthenticated |
+| `kimi` | kimi.com | `auth_token` | Moonshot AI; `localStorage` access token |
+| `lmarena` | lmarena.ai | none | Anonymous arena chat |
+| `openrouter` | openrouter.ai | `auth_token` | OpenAI-compatible; any OpenRouter model id |
+| `groq` | api.groq.com | `auth_token` | OpenAI-compatible; e.g. `llama-3.3-70b-versatile` |
+| `together` | api.together.xyz | `auth_token` | OpenAI-compatible |
+| `githubmodels` | models.github.ai | `auth_token` | GitHub PAT with `models:read` |
+| `doubao` | doubao.com | cookies | ByteDance; `sessionid` cookie |
+| `yuanbao` | yuanbao.tencent.com | cookies | Tencent Hunyuan web |
+| `chatglm` | chatglm.cn | `auth_token` | Zhipu GLM web token |
+| `sparkdesk` | xinghuo.xfyun.cn | cookies | iFlytek Spark web |
+| `hailuo` | hailuo.ai | `auth_token` | MiniMax web token |
+| `iask` | iask.ai | none | Anonymous search chat |
+| `scira` | scira.ai | none | Anonymous; Vercel data-protocol stream |
+| `komo` | komo.ai | none | Anonymous search chat |
+| `andi` | andisearch.com | none | Anonymous search chat |
+| `felo` | felo.ai | none | Anonymous search chat |
+| `devv` | devv.ai | none | Anonymous dev-focused search |
+| `venice` | venice.ai | none | Anonymous; privacy-focused inference |
+| `deepai` | deepai.org | none | Anonymous chat |
+| `aistudio` | aistudio.google.com | cookies | Google account cookies |
+| `notebooklm` | notebooklm.google.com | cookies | Google account cookies |
+| `cohere` | api.cohere.com | `auth_token` | Cohere v2 chat API |
+| `lumo` | lumo.proton.me | cookies | Proton session cookies |
+| `v0` | v0.dev | cookies | Vercel v0 chat |
+| `bolt` | bolt.new | none | StackBlitz Bolt chat |
+| `lovable` | lovable.dev | cookies | Lovable builder session |
+| `websim` | websim.ai | `auth_token` | Websim API key |
+| `monica` | monica.im | cookies | Monica assistant session |
+| `sider` | sider.ai | cookies | Sider assistant session |
+| `merlin` | getmerlin.in | cookies | Merlin assistant session |
+| `popai` | popai.pro | cookies | PopAI session |
+| `genspark` | genspark.ai | cookies | Genspark session |
+| `skywork` | skywork.ai | cookies | Skywork session |
+| `sensechat` | chat.sensetime.com | `auth_token` | SenseTime web token |
+| `baichuan` | baichuan-ai.com | cookies | Baichuan web session |
+| `wrtn` | wrtn.ai | cookies | Korean aggregator session |
+| `coze` | coze.com | cookies | ByteDance bot platform; pass `bot_id` |
+| `kagi` | kagi.com | cookies | Paid Kagi account (Assistant) |
+| `cody` | sourcegraph.com | `auth_token` | Sourcegraph access token |
+| `ai360` | bot.n.cn | cookies | 360 Zhinao session |
+| `abacus` | apps.abacus.ai | cookies | ChatLLM session |
 
 ---
 
@@ -625,10 +679,11 @@ Every provider implements a best-effort `refresh()` flow:
 - **Mistral Le Chat**: verifies session by loading the home page
 - **Microsoft Copilot**: primes the session by loading the home page
 - **Poe**: fetches formkey from the Poe home page
-- **Blackbox AI**: attempts to scrape the validated token from the homepage JavaScript
+- **Blackbox AI**: validates that an API key is present
 - **Character.AI**: verifies the bearer token by fetching the authenticated user profile
 - **Qwen Chat**: validates that an auth token is present
-- **Tongyi Qianwen**: verifies cookie-based session by pinging the session list endpoint
+- **Tongyi Qianwen**: validates that a Bearer token is present
+- **New providers**: token providers validate the token; cookie providers check session cookies; anonymous providers prime lightweight session state (e.g. DuckAI's `x-vqd-4` token or Z.ai's guest token)
 
 You can also provide a custom callback to renew cookies when a session expires.
 

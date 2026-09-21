@@ -50,6 +50,7 @@ class CharacterAIProvider(BaseProvider):
     default_base_url = "https://neo.character.ai"
 
     _PLUS_BASE = "https://plus.character.ai"
+    _USER_INFO_BASES = ("https://plus.character.ai", "https://character.ai", "https://neo.character.ai")
 
     def __init__(
         self,
@@ -78,16 +79,28 @@ class CharacterAIProvider(BaseProvider):
                 "find any request to plus.character.ai and copy the "
                 "'Authorization: Token ...' header value."
             )
-        # Verify token by fetching user info
-        response = await self.client.get(
-            f"{self._PLUS_BASE}/chat/user/",
-            headers={"authorization": f"Token {token}"},
-        )
-        if response.status_code == 401:
-            raise AuthenticationError("CharacterAI token is invalid or expired.")
-        if response.status_code >= 400:
+        # Verify token by fetching user info.  plus.character.ai now redirects
+        # to character.ai for page loads, so try each known API host.
+        response: httpx.Response | None = None
+        last_status = 0
+        for base in self._USER_INFO_BASES:
+            try:
+                response = await self.client.get(
+                    f"{base}/chat/user/",
+                    headers={"authorization": f"Token {token}"},
+                )
+            except httpx.HTTPError:
+                continue
+            last_status = response.status_code
+            if response.status_code == 401:
+                raise AuthenticationError("CharacterAI token is invalid or expired.")
+            if response.status_code < 400:
+                break
+        else:
+            response = None
+        if response is None or response.status_code >= 400:
             raise AuthenticationError(
-                f"CharacterAI authentication failed: HTTP {response.status_code}"
+                f"CharacterAI authentication failed: HTTP {last_status}"
             )
         try:
             data = response.json()
