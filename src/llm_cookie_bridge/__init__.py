@@ -1,21 +1,23 @@
-from .client import LLMCookieBridge
-from .exceptions import (
-    AuthenticationError,
-    BridgeError,
-    ParseError,
-    ProviderResponseError,
-    RateLimitError,
-)
-from .types import ChatChunk, ChatResponse, CookieRefreshResult
+"""Provider availability for LLMCookieBridge."""
 
-__all__ = [
-    "AuthenticationError",
-    "BridgeError",
-    "ChatChunk",
-    "ChatResponse",
-    "CookieRefreshResult",
-    "LLMCookieBridge",
-    "ParseError",
-    "ProviderResponseError",
-    "RateLimitError",
-]
+from typing import NoReturn
+
+__all__ = ["LLMCookieBridge", "ProviderUnavailableError", "available_providers"]
+
+
+class ProviderUnavailableError(RuntimeError):
+    """Raised when a provider has no live-verified integration."""
+
+
+def available_providers() -> tuple[str, ...]:
+    """Return the IDs of the providers enabled in this build."""
+    return ()
+
+
+class LLMCookieBridge:
+    """Entry point for opening a live-verified provider integration."""
+
+    @staticmethod
+    def create(provider: str) -> NoReturn:
+        """Reject provider creation while no integrations are enabled."""
+        raise ProviderUnavailableError("This build has no live-verified providers.")
