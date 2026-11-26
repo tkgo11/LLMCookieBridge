@@ -13,7 +13,7 @@ accepts no session credentials.
 Use Python 3.11 or newer.
 
 ```sh
-python -m pip install '.[dev]'
+python -m pip install --upgrade 'setuptools>=84.1.0' '.[dev]'
 python -m pytest
 python -m ruff check
 python -m ruff format --check
